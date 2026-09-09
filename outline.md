@@ -12,7 +12,7 @@
 
 | 编号 | 章节 | 正文 | 实验 | 状态 |
 | --- | --- | --- | --- | --- |
-| 01 | 项目基线与可复现环境 | [正文](chapters/01-project-baseline.md) | [`chapters/01-project-baseline`](../chapters/01-project-baseline/) | 骨架 |
+| 01 | 项目基线与可复现环境 | [正文](chapters/01-project-baseline/article/) | [实验](chapters/01-project-baseline/lab/) | 骨架 |
 
 ## 写作约定
 

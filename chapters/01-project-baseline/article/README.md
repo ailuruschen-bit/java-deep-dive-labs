@@ -8,14 +8,14 @@
 
 ## 环境基线
 
-- JDK：8（由本章的 `.java-version` 声明）
+- JDK：8（由本章 `lab/.java-version` 声明）
 - 构建工具：Maven Wrapper（版本固定在本章目录）
 - 测试框架：JUnit Jupiter
 
 ## 运行实验
 
 ```bash
-cd chapters/01-project-baseline
+cd chapters/01-project-baseline/lab
 ./mvnw test
 ```
 
