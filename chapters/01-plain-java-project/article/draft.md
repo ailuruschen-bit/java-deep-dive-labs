@@ -62,16 +62,20 @@ java -version
 javac -version
 ```
 
-这台实验机器当前得到的关键信息是：
+将主环境切换到 Java 21 后，这台实验机器得到的关键信息是：
 
 ```text
-java:  /usr/bin/java
-javac: /usr/bin/javac
-java version "1.8.0_401"
-javac 1.8.0_401
+JAVA_HOME=/Users/apple/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Home
+java:  $JAVA_HOME/bin/java
+javac: $JAVA_HOME/bin/javac
+openjdk version "21.0.11"
+javac 21.0.11
+java.home=$JAVA_HOME
 ```
 
-`java` 和 `javac` 都存在，并且版本一致，只能初步说明当前命令行能够同时运行和编译 Java 程序。它还不能单独证明机器上只安装了一个 JDK，也不能证明 `/usr/bin/java` 就是 JDK 的真实安装目录。`PATH`、`JAVA_HOME`、操作系统的命令转发机制，以及多个并存的 JDK 都可能影响最终执行的是哪一个程序。
+`java` 和 `javac` 都存在，并且版本一致，只能初步说明当前命令行能够同时运行和编译 Java 程序。这里使用的是 JetBrains 提供的 OpenJDK 21 构建，它包含本文目前需要的完整编译与运行工具。`java.home` 不再指向 JDK 内部的 `jre/` 子目录，也正好印证了现代 JDK 已经不再沿用 Java 8 的目录布局。
+
+这些结果仍然不能证明机器上只安装了一个 JDK。`PATH`、`JAVA_HOME`、操作系统的命令转发机制，以及多个并存的 JDK 都可能影响最终执行的是哪一个程序。
 
 下一步需要继续追踪命令解析过程，并弄清楚 `JAVA_HOME` 在其中扮演的角色。
 
