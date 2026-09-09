@@ -1,28 +1,20 @@
-# Plain Java project lab
+# 纯 Java 运行实验
 
-This lab uses only the tools provided by JDK 21. It does not use an IDE, Maven, or Gradle.
-
-Inspect the active Java environment:
-
-```bash
-./inspect-environment.sh
-```
-
-Compile all source sets and run the class path experiments:
+本实验只使用 JDK 21 自带的工具，不依赖 IDE、Maven 或 Gradle。
 
 ```bash
 ./run-experiments.sh
 ```
 
-The experiment covers:
+实验按文章顺序覆盖：
 
-- compilation from `.java` source files to `.class` files;
-- the Java 21 single-file source-code mode;
-- bytecode inspection with `javap`;
-- the default class path;
-- multiple class path roots;
-- a missing main class;
-- a missing dependency;
-- a small custom `ClassLoader` that maps binary names to class files.
+1. `javac` 默认在源文件旁生成 `Main.class`。
+2. 使用 `javap` 观察字节码。
+3. 使用 `javac -d` 指定输出目录。
+4. 从当前工作目录启动具有多层包名的类。
+5. 将自己的代码和依赖编译到三个独立的 classpath 根。
+6. 分别使用 `-cp` 和 `CLASSPATH` 启动程序。
+7. 演示漏掉依赖目录时的加载失败。
+8. 简单验证 Java 21 的单文件源码启动方式。
 
-The scripts deliberately do not install or select a JDK. They use the Java environment resolved by the current shell.
+Java 源码中不包含非英文注释。

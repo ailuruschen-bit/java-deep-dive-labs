@@ -1,286 +1,343 @@
-# 一个纯净的 Java 项目是如何跑起来的？
+# 一个纯净的 Java 项目如何运行起来
 
-> 本文仍在撰写中。
+平时开发 Java 项目时，我们习惯了在 IDE 中点击运行，或者把编译和启动交给 Maven、Gradle。一个项目能跑起来似乎是理所当然的，但在这些工具替我们完成工作之前，Java 最基础的运行链路是什么？
 
-## 先弄清楚：我们安装的 Java 到底是什么
+这篇文章暂时放下 IDE、构建工具和框架，只使用 JDK 自带的命令，从一份源代码开始，看看它如何变成 JVM 中真正运行的程序。
 
-在写第一行代码之前，我想先回答一个看似简单的问题：电脑里安装的“Java”到底是什么？
+## 我们使用的 Java 开发环境
 
-我们经常会看到两个名字：JDK 和 JRE。
+开始实验前，先梳理两个经常出现的概念：JDK 和 JRE。
 
-- **JDK** 的全称是 **Java Development Kit**，可以理解为 Java 开发工具包。
-- **JRE** 的全称是 **Java Runtime Environment**，可以理解为 Java 运行时环境。
+- **JRE（Java Runtime Environment）** 提供运行 Java 程序所需的 JVM、类库和其他组件。
+- **JDK（Java Development Kit）** 在运行环境的基础上，继续提供编译、调试、分析等开发工具。
 
-这里需要先修正两个容易记错的地方：JDK 不是 *Develop Kit*，JRE 也不是 *Running Environment*。`Development` 强调它是一套用于开发的工具，`Runtime` 指程序运行期间所需要的环境。
+JRE 关注的是“运行”，JDK 关注的是“开发和运行”。因此，对 Java 开发者来说，日常真正需要安装和接触的通常是 JDK。
 
-### 用 Java 8 的结构理解 JDK 和 JRE
+> JRE 曾经被广泛作为独立产品安装。现在是否提供独立 JRE，取决于采用的 JDK 发行版和部署方式；现代 Java 也可以为应用生成定制运行时。这个差异不影响本文的知识主线：开发者使用 JDK，而 JVM 负责执行编译后的 Java 程序。
 
-Oracle 的 Java SE 8 文档给出了一个很直观的关系：JRE 提供运行 Java 程序所需的类库、Java 虚拟机以及其他组件；JDK 则包含 JRE，并在它的基础上提供编译器、调试器等命令行开发工具。
-
-可以暂时把它理解成：
+我们熟悉的 `javac`，就是 JDK 提供的核心开发工具之一。它会读取 `.java` 源文件，将其编译成 `.class` 字节码文件。
 
 ```text
-JDK
-├── 用于运行 Java 程序的环境（JRE）
-└── 用于开发 Java 程序的工具
+Java 源代码（.java）
+        │
+        │ javac
+        ▼
+Java 字节码（.class）
+        │
+        │ java
+        ▼
+JVM 加载并执行
 ```
 
-这个模型很适合入门，因为它解释了为什么安装 JDK 后既能编译程序，也能运行程序；而传统的独立 JRE 主要面向只需要运行 Java 程序的机器。
+接下来，我们从最简单的情况开始验证这条链路。
 
-但这不是所有 Java 版本都可以原样套用的目录结构。Java 8 的 JDK 目录中确实包含一个 `jre/` 子目录；到了模块化之后的现代 JDK，安装目录已经不再沿用这套布局。以 Oracle JDK 21 为例，官方安装指南直接建议：无论开发还是运行 Java 应用，都安装 JDK。现代 Java 还可以通过 `jlink` 为具体应用生成裁剪后的运行时镜像。
+## 编译第一个 Java 文件
 
-因此，文章后面可以继续使用“JDK 提供开发能力和运行能力”这个概念，但不应该让读者误以为现代 Java 必然存在一个可以单独找到的 `jre/` 目录，或者任何版本都应当分别选择 JDK 与 JRE 安装包。
-
-### `javac` 是 JDK 单独提供的吗？
-
-是的，`javac` 是 JDK 提供的核心开发工具之一，它的职责是读取 `.java` 源文件，并把它们编译为可以在 Java 虚拟机上运行的 `.class` 文件。
-
-与它相对，`java` 命令是 Java 应用启动器。先不考虑 JAR、模块和构建工具，一个 Java 程序最基础的路径可以写成：
-
-```text
-源代码（.java）
-    │
-    │ javac 编译
-    ▼
-字节码（.class）
-    │
-    │ java 启动
-    ▼
-Java 虚拟机执行程序
-```
-
-这也给出了本文后续实验的起点：暂时不使用 Maven、Gradle 或 IDE，只使用 JDK 自带的 `javac` 和 `java`，观察一个最小 Java 项目究竟如何从源文件变成正在运行的程序。
-
-## 先检查当前机器实际使用的环境
-
-在终端中运行：
-
-```bash
-command -v java
-command -v javac
-java -version
-javac -version
-```
-
-将主环境切换到 Java 21 后，这台实验机器得到的关键信息是：
-
-```text
-JAVA_HOME=/Users/apple/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Home
-java:  $JAVA_HOME/bin/java
-javac: $JAVA_HOME/bin/javac
-openjdk version "21.0.11"
-javac 21.0.11
-java.home=$JAVA_HOME
-```
-
-`java` 和 `javac` 都存在，并且版本一致，只能初步说明当前命令行能够同时运行和编译 Java 程序。这里使用的是 JetBrains 提供的 OpenJDK 21 构建，它包含本文目前需要的完整编译与运行工具。`java.home` 不再指向 JDK 内部的 `jre/` 子目录，也正好印证了现代 JDK 已经不再沿用 Java 8 的目录布局。
-
-这些结果仍然不能证明机器上只安装了一个 JDK。`PATH`、`JAVA_HOME`、操作系统的命令转发机制，以及多个并存的 JDK 都可能影响最终执行的是哪一个程序。
-
-## 从源码到字节码
-
-先写一个最小的 Java 类：
+先创建一个没有包声明的 `Main.java`：
 
 ```java
-package dev.deepdive.basic;
-
-public final class Hello {
-    private Hello() {
-    }
-
+public class Main {
     public static void main(String[] args) {
-        System.out.println("Hello from a plain Java project.");
+        System.out.println("Hello, Java!");
     }
 }
 ```
 
-按照 Java 最经典的工作方式，运行程序需要两步：先用 `javac` 编译，再用 `java` 启动。
-
-```bash
-javac -d build/basic src/basic/dev/deepdive/basic/Hello.java
-cd build/basic
-java dev.deepdive.basic.Hello
-```
-
-第一条命令会生成：
+当前目录只有这一个源文件：
 
 ```text
-build/basic/dev/deepdive/basic/Hello.class
+step-1/
+└── Main.java
 ```
 
-`.java` 文件保存的是人类编写的 Java 源码，`.class` 文件保存的则是 JVM 规定的 class 文件格式，其中包含 JVM 指令，也就是我们常说的 Java 字节码。
-
-如果没有接触过 C 等需要显式编译的语言，可以先把字节码理解成 Java 源码翻译出来的一种中间形式：它不是写给人直接阅读的，却有明确、紧凑且与具体操作系统和 CPU 无关的二进制结构，可以交给 JVM 处理。
-
-这里不把它简单描述成“执行效率更高的代码”。程序最终如何执行、是否解释运行、何时被即时编译为机器码，是 JVM 后续阶段的工作。对这一章来说，只要先记住下面这条边界：JVM 的输入是符合规范的 class 数据，而不是我们看到的 Java 语法。
-
-JDK 还提供了 `javap`，可以反汇编 class 文件。运行：
+进入 `step-1`，执行编译：
 
 ```bash
-javap -cp build/basic -c dev.deepdive.basic.Hello
+javac Main.java
 ```
 
-会看到类似 `getstatic`、`ldc`、`invokevirtual`、`return` 这样的 JVM 指令。我们暂时不解释每一条指令，只用它确认源代码已经被翻译成另一套表示形式。
+<!-- Media: show javac creating Main.class beside Main.java. -->
 
-### Java 21 真的不能直接运行源码吗？
-
-如果我们使用 Java 21，下面这条命令其实也能成功：
-
-```bash
-java src/basic/dev/deepdive/basic/Hello.java
-```
-
-这是 Java 11 引入的单文件源码启动模式。`java` 启动器识别到参数是一个现存的 `.java` 文件后，会先在内存中编译源码，再加载编译结果并执行；它不会在源码目录旁留下普通的 `.class` 文件。
-
-所以“JRE 不能运行 Java 源码，必须手动调用 `javac`”对于 Java 21 并不严谨。更准确的说法是：**JVM 不直接执行 Java 源码；即使使用 `java Hello.java`，中间仍然发生了编译。**
-
-本文仍然先使用显式的 `javac` → `java` 两步流程，因为它能让编译产物、类名和 classpath 的作用都暴露出来。
-
-## `java` 后面为什么不是 class 文件名
-
-在 class 模式下，`java` 命令的参数不是文件路径：
-
-```bash
-# Incorrect
-java dev/deepdive/basic/Hello.class
-
-# Correct
-java dev.deepdive.basic.Hello
-```
-
-`dev.deepdive.basic.Hello` 是这个类的二进制名称。名字里的点也不是通用的“向下进入一层目录”语法，而是在分隔包名与类名。对于存放在普通目录里的 class 文件，包结构通常映射成目录结构，因此这个名称对应的相对文件位置是：
+编译成功后，目录里多了一个 `Main.class`：
 
 ```text
-dev.deepdive.basic.Hello
-            ↓
-dev/deepdive/basic/Hello.class
+step-1/
+├── Main.class
+└── Main.java
 ```
 
-还缺少一个关键问题：这条相对路径应当从哪里开始找？答案就是 classpath。
-
-## classpath：寻找用户类的起点
-
-classpath 是一组搜索根。每一项可以是目录、JAR 文件或 ZIP 文件。应用类加载器需要查找用户类时，会在这些根中搜索相应的 class 数据。
-
-当我们既没有传入 `-cp`，也没有设置 `CLASSPATH` 环境变量时，默认的用户 classpath 是当前工作目录 `.`。因此下面的命令能够成功：
+在没有指定输出位置时，`javac` 默认把生成的 class 文件放在对应源文件旁边。我们也可以使用 `-d` 指定统一的输出目录：
 
 ```bash
-cd build/basic
-java dev.deepdive.basic.Hello
+javac -d out Main.java
 ```
 
-此时当前目录是 `build/basic`。类加载器以它作为搜索根，再根据类名找到 `dev/deepdive/basic/Hello.class`。
+这一次，编译结果会出现在 `out/Main.class`。
 
-我们也可以用 `-cp`（`--class-path` 和 `-classpath` 的缩写）明确指定搜索根：
+### 暂时怎样理解字节码
+
+如果没有接触过需要显式编译的语言，可以先把字节码理解为 Java 源码翻译出来的一种中间代码。
+
+源码是为人类阅读和编写的；字节码则遵循 JVM 规定的 class 文件格式，其中保存着 JVM 能够识别的指令和数据。它仍然不是 CPU 直接执行的机器码，但已经脱离了 Java 源码的文本形式，人类直接阅读会费劲得多。
+
+这里不需要急着研究每一条字节码指令，也不必简单地把它理解成“为了提高执行效率”。目前只需要建立一个边界：**JVM 不直接理解 Java 源码，它处理的是编译后符合 class 文件格式的数据。**
+
+JDK 提供的 `javap` 可以帮助我们观察 class 文件。例如：
 
 ```bash
-java -cp build/basic dev.deepdive.basic.Hello
+javap -c Main.class
 ```
 
-classpath 可以包含多项。在 macOS 和 Linux 上使用冒号 `:` 分隔，在 Windows 上使用分号 `;` 分隔。通常应该把整个 classpath 参数放在引号中，避免空格或 shell 展开造成干扰。
+输出中会出现 `getstatic`、`ldc`、`invokevirtual`、`return` 等 JVM 指令。我们暂时不展开这些指令，只用它证明 `Main.java` 已经被翻译成另一种表示形式。
 
-## class 文件可以分散在不同位置吗？
+> Java 也支持 `java Main.java` 这样的单文件源码启动方式。它看起来跳过了 `javac`，实际上启动器仍会先在内存中编译源码，再执行编译结果。本文先坚持显式编译，因为这样更容易看清 class 文件和后续的加载过程。
 
-实验里还有三个类：
+## 从当前目录启动 Main
 
-```text
-Main.class             位于 build/app
-Greeting.class         位于 build/greeting
-Punctuation.class      位于 build/punctuation
-```
-
-它们形成 `Main → Greeting → Punctuation` 的依赖关系。只要把三个搜索根都交给 `java`，这些 class 文件并不需要集中在同一个目录：
+`Main.class` 已经生成，现在让 `java` 启动它：
 
 ```bash
-java \
-  -cp "build/app:build/greeting:build/punctuation" \
-  dev.deepdive.app.Main
+java Main
 ```
 
 输出为：
 
 ```text
-Hello, classpath!
+Hello, Java!
 ```
 
-如果漏掉保存主类的 `build/app`：
+这里传给 `java` 的不是 `Main.class` 这个文件名，而是去掉 `.class` 后缀的类名 `Main`。
 
-```bash
-java \
-  -cp "build/greeting:build/punctuation" \
-  dev.deepdive.app.Main
+为什么 `java` 不直接接收文件路径？我们先把代码放进一个更接近真实项目的包结构，再观察一次。
+
+## 当 class 文件进入子目录
+
+给 `Main` 增加包声明：
+
+```java
+package dev.deepdive.app;
+
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello, Java!");
+    }
+}
 ```
 
-启动器连入口类都找不到，因此会报告：
+编译后，我们得到这样的目录：
 
 ```text
-Error: Could not find or load main class dev.deepdive.app.Main
-Caused by: java.lang.ClassNotFoundException: dev.deepdive.app.Main
+out/
+└── dev/
+    └── deepdive/
+        └── app/
+            └── Main.class
 ```
 
-如果保留主类和 `Greeting`，却漏掉运行时需要的 `Punctuation`：
+如果当前工作目录是 `out`，启动命令为：
+
+```bash
+java dev.deepdive.app.Main
+```
+
+<!-- Media: run Main from out, then show the class file tree. -->
+
+`dev.deepdive.app.Main` 这种包含包名的完整类名，被称作类的**二进制名称**。在普通目录结构中，名称里的点会对应目录分隔，而末尾的 `Main` 对应 `Main.class`：
+
+```text
+dev.deepdive.app.Main
+          │
+          ▼
+dev/deepdive/app/Main.class
+```
+
+观察这个转换结果，它看起来很像一个相对路径。那么，它究竟是相对哪里开始寻找的？
+
+在回答这个问题之前，我们先看看 `java` 命令启动程序时发生了什么。
+
+## `java`、JVM 与类加载器
+
+`java` 命令首先启动 JVM。JVM 是 Java 运行时的核心；在编程语言的语境里，我们经常把程序执行期间所需的这套机制称为“运行时”。其他语言同样会有自己的运行时，只是具体设计不同。
+
+而 `java` 后面的 `dev.deepdive.app.Main`，是在告诉 JVM：这一次要从哪个类开始执行。
+
+接下来，JVM 需要根据这个名称找到对应的字节码，将字节码加载到内存，并在运行时建立出我们熟悉的 Java 类。负责完成这项工作的组件，叫作**类加载器（ClassLoader）**。
+
+暂时不看 JDK 内部的真实代码，可以先用下面这段伪代码理解它的核心工作：
+
+```text
+relativePath = className.replace(".", "/") + ".class"
+
+for each root in classpath:
+    classFile = root + relativePath
+    if classFile exists:
+        bytes = read(classFile)
+        return defineClass(className, bytes)
+
+throw ClassNotFoundException
+```
+
+它先把类名转换成 class 文件的相对位置，然后从若干搜索起点中寻找这个文件。读取到字节数据后，再通过 JVM 提供的能力定义出运行时的 `Class` 对象。
+
+这里提到的若干“搜索起点”，就是 **classpath**。
+
+## classpath 从哪里开始找
+
+回到刚才的命令：
+
+```bash
+cd out
+java dev.deepdive.app.Main
+```
+
+在这个最简单的场景里，classpath 就是当前工作目录，也就是 `out`。类加载器从 `out` 开始，再拼接 `dev/deepdive/app/Main.class`，最终找到完整文件。
+
+```text
+classpath root                 relative class path
+out/                         + dev/deepdive/app/Main.class
+                              ↓
+out/dev/deepdive/app/Main.class
+```
+
+这解释了为什么我们在 `out` 中可以直接启动，但切换到其他工作目录后，同样的命令可能报告找不到主类。
+
+那我们是否可以不改变工作目录，直接告诉 JVM 应该从哪里开始搜索？可以，这就是 `-cp` 参数的作用。
+
+```bash
+java -cp out dev.deepdive.app.Main
+```
+
+`-cp` 是 `--class-path` 的简写。上面的命令把 `out` 明确设置成 classpath，因此无论当前是否位于 `out`，应用类加载器都知道应该从哪里寻找 `dev.deepdive.app.Main`。
+
+## 为什么需要多个 classpath
+
+现在考虑一个更接近真实项目的情况。我们希望把自己编译的代码和外部提供的代码分开管理：
+
+```text
+deployment/
+├── app/
+│   └── dev/deepdive/app/Main.class
+└── lib/
+    └── dev/deepdive/greeting/Greeting.class
+```
+
+`Main` 的类名是 `dev.deepdive.app.Main`，`Greeting` 的类名是 `dev.deepdive.greeting.Greeting`。
+
+物理目录里的 `app` 和 `lib` 只是我们为了管理文件增加的分区，它们并不是 Java 包名的一部分。我们当然不希望因为把第三方代码放进了 `lib`，就在代码里把 `Greeting` 改成 `lib.dev.deepdive.greeting.Greeting`。事实上，即使想这样写也不应该成功，因为 class 文件内部记录的真实类名并没有 `lib` 前缀。
+
+更自然的做法，是把 `app` 和 `lib` 都设置成搜索根：
 
 ```bash
 java \
-  -cp "build/app:build/greeting" \
+  -cp "deployment/app:deployment/lib" \
   dev.deepdive.app.Main
 ```
 
-这一次 JVM 能启动 `Main`，但程序执行到相关依赖时会失败：
+类加载器寻找 `Main` 时，从 `deployment/app` 得到：
+
+```text
+deployment/app/dev/deepdive/app/Main.class
+```
+
+寻找 `Greeting` 时，则从 `deployment/lib` 得到：
+
+```text
+deployment/lib/dev/deepdive/greeting/Greeting.class
+```
+
+这就是多个 classpath 最直观的价值：**物理文件可以分开放置，但 Java 代码中的包名和类名不需要为存储目录妥协。**
+
+在 macOS 和 Linux 中，多个路径使用冒号 `:` 分隔；Windows 使用分号 `;`。
+
+实验继续把依赖拆得更散：
+
+```text
+deployment/app/               Main.class
+deployment/lib/greeting/      Greeting.class
+deployment/lib/punctuation/   Punctuation.class
+```
+
+完整启动命令为：
+
+```bash
+java \
+  -cp "deployment/app:deployment/lib/greeting:deployment/lib/punctuation" \
+  dev.deepdive.app.Main
+```
+
+如果漏掉最后一个搜索根：
+
+```bash
+java \
+  -cp "deployment/app:deployment/lib/greeting" \
+  dev.deepdive.app.Main
+```
+
+程序能够找到并启动 `Main`，也能够找到 `Greeting`，但执行到需要 `Punctuation` 时会失败：
 
 ```text
 java.lang.NoClassDefFoundError: dev/deepdive/punctuation/Punctuation
 Caused by: java.lang.ClassNotFoundException: dev.deepdive.punctuation.Punctuation
 ```
 
-这两个错误的出现阶段不同，但都能说明一件事：字节码确实存在于磁盘上还不够，它所在的位置必须能被负责加载它的类加载器发现。
+这类错误并不一定说明 class 文件不存在。它也可能只是存在于某个目录中，却没有把那个目录加入 classpath。
 
-## 从类名到内存中的类
+<!-- Media: compare the successful and missing-classpath executions. -->
 
-Oracle 对 `java` 命令的描述很直接：它会启动 JVM、加载指定的类，然后调用这个类的 `main` 方法。
+## `-cp` 之外的另一种设置方式
 
-“加载指定的类”并不是一句无法继续拆解的魔法。Java 中的 `ClassLoader` 就是负责类加载的对象。官方 API 对它的定义是：给定一个类的二进制名称，类加载器应当尝试定位或生成构成该类定义的数据。一种典型策略是把类名转换成文件名，读取对应 class 文件，再通过 `defineClass` 把字节转换为 JVM 中的 `Class` 对象。
+刚才使用 `-cp`，只为当前这一次 `java` 命令指定 classpath。除此之外，还可以设置 `CLASSPATH` 环境变量：
 
-实验里实现了一个刻意简化的 `DirectoryClassLoader`，其中最关键的逻辑是：
-
-```java
-String relativePath = binaryName.replace('.', '/') + ".class";
-
-for (Path root : classPathRoots) {
-    Path classFile = root.resolve(relativePath);
-    if (Files.isRegularFile(classFile)) {
-        byte[] classBytes = Files.readAllBytes(classFile);
-        return defineClass(binaryName, classBytes, 0, classBytes.length);
-    }
-}
+```bash
+export CLASSPATH="deployment/app:deployment/lib/greeting:deployment/lib/punctuation"
+java dev.deepdive.app.Main
 ```
 
-这段代码不是 JVM 内置类加载器的完整实现，它只是把核心关系展示出来：
+可以把两种方式理解为：
+
+- `-cp`：只影响当前一次命令，并且表达最明确。
+- `CLASSPATH`：为当前 shell 环境中的后续 Java 命令提供默认值。
+
+如果两者同时出现，命令中的 `-cp` 会覆盖 `CLASSPATH` 环境变量。若两者都没有设置，用户 classpath 才回到我们一开始使用的当前工作目录 `.`。
+
+在实验和问题排查中，显式使用 `-cp` 往往更容易看出一个程序究竟依赖哪些搜索路径；全局 `CLASSPATH` 则可能让相同命令在不同人的机器上表现不一致。
+
+## class 文件能否直接作为部署产物
+
+从技术上说，只要服务器上有兼容的 Java 运行环境，并准备好正确的 classpath，编译后的 `.class` 文件当然可以脱离源码部署和运行。
+
+真实项目通常不会像实验这样逐个散放 class 文件，而是把一组 class 和资源打包成 JAR，Web 应用还可能使用 WAR。它们与 VB 的 EXE 并不是同一种文件格式，但在“服务器运行的是构建产物，而开发人员维护的是源码”这一点上，面临的是相同的版本管理问题。
+
+Java 的独立批处理也并非只存在于理论中。企业调度器通常通过脚本启动一个新的 JVM 来执行批处理；Spring Batch 官方文档就把命令行作为对接企业调度器的主要方式。日本厂商日立的 JP1 产品文档中，也提供了用于执行 Java 批处理应用的 `adshjava` 命令。因此，一个服务器上部署并调度多个独立 Java 批处理产物，是完全成立的使用方式。
+
+当服务器上的构建产物与团队手中的源码可能不一致时，`javap` 确实比面对一个完全不透明的文件多提供了一层观察手段：
+
+```bash
+javap -p -c -l SomeJob.class
+javap -sysinfo SomeJob.class
+```
+
+`-p` 可以显示所有成员，`-c` 可以反汇编方法的字节码，`-l` 可以显示行号和局部变量表，而 `-sysinfo` 还能显示文件路径、大小、时间和 SHA-256 哈希。
+
+不过，`javap` 展示的是 class 结构和字节码，不会还原注释，也不能单独证明它由哪一次 Git 提交构建而来。处理“服务器产物是否对应手中源码”这个问题，更可靠的做法仍然是在构建和发布时记录源码提交、构建编号与产物哈希；`javap` 更适合作为缺少这些信息时的辅助调查工具。
+
+关于 class 文件还能透露哪些信息、类加载器的真实实现以及 JAR 的加载方式，可以留到后续文章再逐步深入。本篇先建立最重要的框架：
 
 ```text
-二进制类名
-    + classpath 搜索根
-    ↓
-找到或生成 class 数据
-    ↓
-defineClass
-    ↓
-JVM 中的 Class 对象
+javac 负责编译
+java 负责启动 JVM
+类加载器根据类名和 classpath 寻找字节码
+JVM 将字节码加载到运行时并执行
 ```
 
-真实实现还要处理父加载器委派、模块、JAR、权限、并发加载、链接等问题。类也不一定来自一个物理 `.class` 文件，它还可以来自 JAR、网络或运行时生成的数据。因此，“JVM 根据类名直接读取某个磁盘文件”可以作为第一层直觉，但更准确的主语应该是类加载器。
-
-OpenJDK 21 的内置类加载器源码中可以看到对 classpath 的搜索过程；而 Java 21 的 `ClassLoader` API 则给出了稳定、公开的加载与定义模型。本文先用自己的小实现理解机制，不依赖 JDK 内部类的具体细节。
-
-## 资料来源
+## 参考资料
 
 - [Oracle Java SE 8 Platform Overview：JRE 与 JDK](https://docs.oracle.com/javase/8/docs/technotes/guides/)
-- [Oracle Java SE 8：JDK 与 JRE 的文件结构](https://docs.oracle.com/javase/8/docs/technotes/tools/windows/jdkfiles.html)
-- [Oracle JDK 21：JDK 安装概览](https://docs.oracle.com/en/java/javase/21/install/overview-jdk-installation.html)
-- [Oracle JDK 21：JDK 安装目录结构](https://docs.oracle.com/en/java/javase/21/install/installed-directory-structure-jdk.html)
 - [Oracle JDK 21：`javac` 命令](https://docs.oracle.com/en/java/javase/21/docs/specs/man/javac.html)
-- [Oracle JDK 21：`java` 命令、单文件源码模式与 classpath](https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html)
+- [Oracle JDK 21：`java` 命令与 classpath](https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html)
 - [Oracle Java SE 21：`ClassLoader` API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ClassLoader.html)
-- [Java 虚拟机规范 21：class 文件、加载、链接与初始化](https://docs.oracle.com/javase/specs/jvms/se21/html/)
-- [OpenJDK：`BuiltinClassLoader` 源码](https://github.com/openjdk/jdk/blob/jdk-21%2B35/src/java.base/share/classes/jdk/internal/loader/BuiltinClassLoader.java)
-- [Oracle JDK 21：创建自定义运行时镜像](https://docs.oracle.com/en/java/javase/21/jpackage/image-and-runtime-modifications.html)
+- [Java 虚拟机规范 21：class 文件格式](https://docs.oracle.com/javase/specs/jvms/se21/html/)
+- [Oracle JDK 21：`javap` 命令](https://docs.oracle.com/en/java/javase/21/docs/specs/man/javap.html)
+- [Oracle JDK 21：创建定制 Java 运行时](https://docs.oracle.com/en/java/javase/21/jpackage/image-and-runtime-modifications.html)
+- [Spring Batch：从命令行运行批处理](https://docs.spring.io/spring-batch/reference/job/running.html)
+- [Hitachi JP1：Java 批处理应用执行环境](https://itpfdoc.hitachi.co.jp/manuals/3021/3021313340/H0313340.PDF)
