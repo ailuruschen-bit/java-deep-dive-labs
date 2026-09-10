@@ -13,7 +13,7 @@
 
 作为开发者，我们既要运行程序，也要编译源码，因此日常使用的通常是 JDK。
 
-> JRE 可以作为独立运行环境分发，是否提供独立安装包取决于发行版；应用也可以使用定制运行时。本文使用 JDK 提供的工具完成编译和启动。
+> JRE 可以作为独立运行环境分发，是否提供独立安装包取决于发行版。本文使用 JDK 提供的工具完成编译和启动。
 
 我们熟悉的 `javac`，就是 JDK 提供的开发工具之一。它读取 `.java` 源文件，编译生成 `.class` 字节码文件。随后，我们用 `java` 命令启动 JVM，加载并执行编译结果：
 
@@ -185,13 +185,15 @@ dev/deepdive/app/Main.class
 
 执行入口方法之前，需要先根据类名找到字节码，将其加载到内存，在 JVM 中建立对应的类。负责这项工作的组件，叫作**类加载器（ClassLoader）**。
 
-如果把从普通目录中查找和加载类的逻辑提取出来，我们可以用下面这段伪代码描述它：
+本文中的应用类都以 class 文件的形式放在普通目录中。要根据类名找到它们，需要先确定从哪些目录开始查找。这组查找位置由 **classpath** 指定：**一个 classpath 可以包含多个条目；在本文中，每个条目都是一个目录，也就是类文件的搜索起点。**
+
+针对这个场景，我们可以用下面这段伪代码描述查找和加载过程：
 
 ```text
 relativePath = className.replace(".", "/") + ".class"
 
-for each root in classpath:  // Why multiple roots? We'll come back to this.
-    classFile = joinPath(root, relativePath)
+for each entry in classpath:  // Why multiple entries? We'll come back to this.
+    classFile = joinPath(entry, relativePath)
     if classFile exists:
         bytes = read(classFile)
         return defineClass(className, bytes)
@@ -199,9 +201,9 @@ for each root in classpath:  // Why multiple roots? We'll come back to this.
 throw ClassNotFoundException
 ```
 
-类名先被转换成相对路径，再与各个搜索起点拼接。找到文件后读取字节数据，通过 JVM 提供的能力定义出运行时的 `Class` 对象。完成启动所需的准备后，运行环境调用 `Main.main`，进入我们写下的代码。
+类名先被转换成相对路径，再与 classpath 中的各个目录条目拼接。找到文件后读取字节数据，`defineClass` 会检查请求的类名是否与文件内部记录的类名一致，并通过 JVM 提供的能力定义出运行时的 `Class` 对象。完成启动所需的准备后，运行环境调用 `Main.main`，进入我们写下的代码。
 
-这些搜索起点组成了 **classpath**。启动命令提供类名，类加载器负责把这个名称对应到实际文件，再交给 JVM 定义成类——这就是前面没有直接传文件路径的原因。
+这样，我们就能把前面的启动参数理解清楚：`java` 接收的是要启动的类名，classpath 提供查找位置，类加载器负责将两者对应到实际文件。类名确定我们要用哪个类，查找位置则由 classpath 配置。
 
 ## classpath：给类名一个搜索起点
 
@@ -211,7 +213,7 @@ throw ClassNotFoundException
 java dev.deepdive.app.Main
 ```
 
-这个实验中的 classpath 默认使用当前工作目录，因此搜索从 `out` 这一层开始，沿着类名对应的目录找到 `Main.class`：
+这个实验没有额外配置 classpath，默认只有一个条目 `.`，表示当前工作目录。因此搜索从 `out` 这一层开始，沿着类名对应的目录找到 `Main.class`：
 
 ```text
 step-2/
@@ -250,19 +252,21 @@ Caused by: java.lang.ClassNotFoundException: dev.deepdive.app.Main
 java -cp out dev.deepdive.app.Main
 ```
 
-程序恢复正常。`-cp` 设置 classpath；这里的 `out` 相对工作目录 `step-2` 解析，搜索起点回到 `step-2/out`。
+程序恢复正常。`-cp out` 将这次启动的 classpath 设置为只有 `out` 这一个条目。这里的 `out` 相对工作目录 `step-2` 解析，搜索起点回到 `step-2/out`。
 
-**工作目录决定相对路径如何解析，classpath 决定查找类时从哪里开始。** `-cp` 接受相对路径，也接受绝对路径。
+**工作目录决定相对路径如何解析，classpath 的目录条目决定查找类时从哪里开始。** 条目可以使用相对路径，也可以使用绝对路径。
 
 下面是这次切换工作目录后的完整操作：同一条启动命令先报告找不到主类，补上 `-cp out` 后恢复正常。
 
 ![切换到 step-2 后找不到主类，使用 java -cp out dev.deepdive.app.Main 后成功输出 Hello, Java!](assets/experiment-03-classpath-root.png)
 
-## classpath 可以包含多个搜索起点
+## 一个 classpath 可以包含多个条目
 
-现在回到前面伪代码里留下的那条注释：为什么这里用了 `for` 循环？刚才我们只指定了一个 `out`，但 classpath 可以包含多个搜索起点，`-cp` 也支持一次配置多个目录。
+现在回到前面伪代码里留下的那条注释：为什么这里用了 `for` 循环？刚才的 classpath 只有一个 `out` 条目，但 `-cp` 可以一次配置多个条目，查找时依次尝试它们。
 
-当我们想把自己写的代码和外部库分开管理时，多个起点就派上用场了。给刚才的程序加上两个依赖：我们写的 `Main` 调用外部库提供的 `Greeting`，`Greeting` 再调用另一个库中的 `Punctuation`。自己的类仍放在项目的包目录下，两个库分别放进 `lib001`、`lib002`：
+当我们想把自己写的代码和外部依赖分开管理时，多个条目就派上用场了。这轮实验模拟使用外部依赖的场景：`Greeting.class` 和 `Punctuation.class` 已经由依赖提供方编译完成，我们站在使用方，只拿到并使用这些编译产物，不能为了适应自己的存放目录而修改它们的包名。
+
+我们写的 `Main` 调用 `Greeting`，`Greeting` 再调用 `Punctuation`。自己的类放在项目的包目录下，两个依赖分别放进 `lib001`、`lib002`，目录结构如下：
 
 ```text
 deployment/  ← 当前工作目录
@@ -282,13 +286,13 @@ deployment/  ← 当前工作目录
                 └── Punctuation.class
 ```
 
-`Greeting` 的包名由它的作者定义。`Greeting.java` 中的声明是：
+`lib001`、`lib002` 只是我们管理依赖文件的目录，不是依赖作者声明的 package。例如，提供方编写 `Greeting.java` 时，包声明是：
 
 ```java
 package dev.deepdive.greeting;
 ```
 
-我们在 `Main` 中按照这个包名导入并使用它，和日常开发时一样：
+编译完成后，`Greeting.class` 内部已经记录了完整类名 `dev.deepdive.greeting.Greeting`。我们在 `Main` 中按照这个名字导入并使用它，和日常开发时一样：
 
 ```java
 package dev.deepdive.app;
@@ -304,21 +308,27 @@ public class Main {
 
 如果只从 `deployment` 开始找，`dev.deepdive.greeting.Greeting` 对应的路径是 `deployment/dev/deepdive/greeting/Greeting.class`。实际文件在 `deployment/lib001/dev/deepdive/greeting/Greeting.class`，多了一层 `lib001`，两者对不上。
 
-看到中间多出的这一层，我们可能会想到在类名前补上 `lib001.`。这样虽然能让查找路径指向文件，但对方源码中的 `package` 没有 `lib001`，编译后的 class 文件记录的也是原来的完整类名。请求名称与文件内部的名称不一致，加载时会报告 `wrong name`。
+看到中间多出的这一层，我们可能会想到让类加载器按 `lib001.dev.deepdive.greeting.Greeting` 这个名字查找。这样虽然能让查找路径指向文件，但文件内部记录的仍然是 `dev.deepdive.greeting.Greeting`。请求名称与文件内部的名称不一致，无法按这个名字定义类，加载时会报告 `wrong name`。
 
-`lib001` 属于我们的文件管理方式，不属于对方的包名。要调整的是搜索起点，不是类名。
+正确做法不是修改类名，而是把 `lib001` 配置为 classpath 的一个目录条目，让它成为搜索起点：
 
-在 `deployment` 下，把三个起点都交给 `-cp`：
+```text
+搜索起点：lib001
+类名对应路径：dev/deepdive/greeting/Greeting.class
+最终位置：lib001/dev/deepdive/greeting/Greeting.class
+```
+
+同样，`Punctuation` 需要从 `lib002` 开始查找，而我们自己的 `Main` 要从当前目录开始查找。在 `deployment` 下，把这三个条目一起交给 `-cp`：
 
 ```bash
 java -cp ".:lib001:lib002" dev.deepdive.app.Main
 ```
 
-这里指定了三个搜索起点：`.` 是当前的 `deployment`，`lib001` 和 `lib002` 是它下面的两个目录。在 macOS 和 Linux 中，多项路径用冒号 `:` 分隔；Windows 中则用分号 `;`，写成 `".;lib001;lib002"`。
+这里配置的是**一个 classpath，包含三个条目**：`.`、`lib001`、`lib002`。它们分别以当前的 `deployment` 目录、它下面的 `lib001` 和 `lib002` 作为搜索起点。在 macOS 和 Linux 中，条目之间用冒号 `:` 分隔；Windows 中则用分号 `;`，写成 `".;lib001;lib002"`。
 
-查找每个类时，类加载器依次尝试这些起点。三个类最终分别在以下位置被找到：
+查找本例中的类时，类加载器依次尝试这些目录条目。三个类最终分别在以下位置被找到：
 
-| 要加载的类 | 在哪个起点找到 | 对应的 class 文件（相对 `deployment`） |
+| 要加载的类 | 在哪个 classpath 条目下找到 | 对应的 class 文件（相对 `deployment`） |
 | --- | --- | --- |
 | `dev.deepdive.app.Main` | `.` | `dev/deepdive/app/Main.class` |
 | `dev.deepdive.greeting.Greeting` | `lib001` | `lib001/dev/deepdive/greeting/Greeting.class` |
@@ -330,11 +340,11 @@ java -cp ".:lib001:lib002" dev.deepdive.app.Main
 Hello, classpath!
 ```
 
-下面是完整操作：进入 `deployment`，确认三个类的存放位置，再指定三个搜索起点启动程序。
+下面是完整操作：进入 `deployment`，确认三个类的存放位置，再配置包含三个条目的 classpath 启动程序。
 
-![多 classpath 实验：查看 deployment 目录结构，使用 .、lib001 和 lib002 三个搜索起点成功运行程序](assets/experiment-04-multiple-classpath.png)
+![classpath 多条目实验：查看 deployment 目录结构，使用包含 .、lib001 和 lib002 三个条目的 classpath 成功运行程序](assets/experiment-04-multiple-classpath.png)
 
-接着，我们故意漏掉 classpath 中的 `lib002`，其他条件不变：
+接着，我们故意漏掉 classpath 中的 `lib002` 条目，其他条件不变：
 
 ```bash
 java -cp ".:lib001" dev.deepdive.app.Main
@@ -347,29 +357,44 @@ java.lang.NoClassDefFoundError: dev/deepdive/punctuation/Punctuation
 Caused by: java.lang.ClassNotFoundException: dev.deepdive.punctuation.Punctuation
 ```
 
-我们没有删除 `Punctuation.class`，它还在磁盘上；缺失的是指向它的搜索起点。以后遇到这类错误，**除了确认 class 文件存在，还要核对“classpath 起点 + 类名对应路径”是否真正指向它。**
+在这次实验中，我们已经进入了 `Main.main`。执行到 `Greeting` 需要使用 `Punctuation` 时，类加载器无法从当前 classpath 中找到它，因此抛出 `ClassNotFoundException`。JVM 执行代码时需要这个类，却未能加载到它，最终向我们报告 `NoClassDefFoundError`，并把前面的 `ClassNotFoundException` 列为原因。
 
-这次失败的完整输出如下，可以看到 `NoClassDefFoundError`，以及后面作为原因列出的 `ClassNotFoundException`，都指向缺失的 `Punctuation`：
+我们没有删除 `Punctuation.class`，它还在磁盘上；缺失的是 classpath 中的 `lib002` 条目。以后遇到这类错误，**除了确认 class 文件存在，还要核对“classpath 目录条目 + 类名对应路径”是否真正指向它。**
+
+这次失败的完整输出如下：
 
 ![遗漏 lib002 后的完整报错：NoClassDefFoundError 及其原因 ClassNotFoundException 均指向 Punctuation](assets/experiment-05-missing-dependency.png)
 
-> 除了 `-cp`，`CLASSPATH` 环境变量也可以提供默认搜索路径。命令中的 `-cp` 优先于这个环境变量；两者都没有设置时，才使用当前工作目录 `.`。本文前面的默认路径实验没有设置该变量，后面的实验则用 `-cp` 明确指定路径。
+> 除了 `-cp`，`CLASSPATH` 环境变量也可以设置默认的 classpath。命令中的 `-cp` 优先于这个环境变量；两者都没有设置时，默认只有当前工作目录 `.` 这一个条目。本文前面的默认路径实验没有设置该变量，后面的实验则用 `-cp` 明确指定条目。
 
-## 从本地运行到部署交付
+到这里，本文中这些放在普通目录里的类如何运行，已经可以归结为三件事：
 
-程序已经在本地跑通了。如果要把它部署到另一台机器，我们需要交付的就是刚才运行时用到的那些文件。
+- **先编译**：把自己写的 `.java` 编译成 `.class`，外部依赖使用提供方的编译产物。
+- **指定入口类**：启动时传入类名，不把存放目录随意拼进包名。
+- **配置 classpath**：用目录条目指定搜索起点，让入口类和运行需要的依赖都能按原有类名找到。
 
-在这个实验里，我们把 `deployment` 目录整体交付过去，在目标机器上准备兼容的 Java 运行环境，就可以从该目录执行相同的启动命令。命令读取的是编译后的 class 文件，因此不需要再提供 `.java` 源码。
+## 回到 IDE：这些信息被保存在哪里
 
-Visual Basic（VB）等语言可以生成 EXE 可执行文件，再将编译产物部署到服务器，由脚本或调度程序启动。Java 也可以交付编译产物；本例交付的是 class 文件，由 JVM 加载和执行。[Visual Basic 编译产物说明](https://learn.microsoft.com/en-us/dotnet/visual-basic/reference/command-line-compiler/sample-compilation-command-lines)
+现在把同样的 Java 程序交给 Eclipse 或 IntelliJ IDEA，编译输出、依赖位置和入口类依然需要确定。区别在于：我们不再每次手写命令，而是把这些信息交给 IDE 的项目设置和运行配置。
 
-这个实验只有三个类，按目录交付还很直观。但回到我们日常维护的项目，几百个类、多个外部库，以及配置和资源文件都要一起发布。每次逐项确认哪些文件需要交付、哪些需要更新，会越来越繁琐。我们自然会希望把相关文件打包成一个整体来管理。
+以使用 IDE 自身构建功能的普通 Java 项目为例，需要管理的信息可以对应到四项设置：
 
-**JAR** 就是一种这样的归档格式，用来打包一组 class 和资源文件。配置了启动入口的可执行 JAR，还可以通过 `java -jar` 启动。[JAR 文件规范](https://docs.oracle.com/en/java/javase/21/docs/specs/jar/jar.html)
+| 要确定的信息 | Eclipse | IntelliJ IDEA |
+| --- | --- | --- |
+| 哪些源码参与编译 | Java Build Path → Source | Project Structure → Modules → Sources |
+| class 文件输出到哪里 | Java Build Path → Source 中的输出目录 | Project Structure → Modules → Paths 中的编译输出目录 |
+| 编译和运行需要哪些依赖 | Java Build Path 中的依赖配置，以及启动配置中的 classpath | Project Structure → Modules → Dependencies，以及运行配置中的 classpath |
+| 从哪个类、哪个工作目录启动 | Run Configurations → Java Application | Run → Edit Configurations → Application |
 
-部署到 Web 容器的应用还会用到 **WAR**：按照 Web 应用的约定组织类、依赖和 Web 资源，再交给容器部署运行。[Web 应用的 WAR 打包结构](https://docs.oracle.com/javaee/7/tutorial/packaging003.htm)
+这里的源码目录，是我们告诉 IDE 去哪里读取 `.java`；编译输出目录，则决定 `.class` 生成在哪里，对应前面 `javac -d` 指定的输出位置。IDE 按照这些设置组织编译工作。Eclipse 把它们放在 [Java Build Path](https://help.eclipse.org/latest/topic/org.eclipse.jdt.doc.user/reference/ref-properties-build-path.htm) 中；IntelliJ IDEA 分别通过 [Sources](https://www.jetbrains.com/help/idea/content-roots.html) 和 [Paths](https://www.jetbrains.com/help/idea/configure-modules.html#module-compiler-output) 管理。
 
-从直接启动 class 文件，到我们在项目中使用的可执行 JAR、Web 容器，文件的组织方式和启动入口在变，类仍然需要加载到 JVM 中执行。后续文章中，我们再分别拆开这些部署方式，追踪它们如何找到类、启动程序。
+依赖路径则同时关系到编译和运行。编译我们自己的代码时，编译器需要找到引用的外部类；启动程序时，类加载器也需要找到执行中用到的类。IDE 会根据项目中的依赖配置组织这两次查找所使用的路径，但**编译时能找到，不等于这次启动时也一定能找到**。Eclipse 的运行 classpath 默认从项目配置推导，也允许单独调整；IntelliJ IDEA 同样允许运行配置使用不同于编译阶段的 classpath。[Eclipse 启动配置](https://help.eclipse.org/latest/topic/org.eclipse.jdt.doc.user/tasks/tasks-java-local-configuration.htm)、[IntelliJ IDEA 依赖配置](https://www.jetbrains.com/help/idea/working-with-module-dependencies.html)、[Application 运行配置](https://www.jetbrains.com/help/idea/run-debug-configuration-java-application.html)
+
+刚才遗漏 `lib002` 的实验就是一个具体例子：`Main.class` 已经编译好了，但这次启动使用的 classpath 少了一个条目，程序仍然会在执行中失败。在 IDE 中排查同样的问题，也要检查本次运行配置实际包含的条目。
+
+运行配置还保存了入口类、工作目录、选用的 Java 运行环境，以及需要传入的参数。对应我们最后的实验，入口类是 `dev.deepdive.app.Main`，工作目录是 `deployment`，运行 classpath 包含 `.`、`lib001`、`lib002`。IDE 可以把这些位置转换成绝对路径传给启动进程；对类加载而言，关键是它们指向同一组目录。
+
+所以，回到 IDE 点击运行时，我们已经知道该检查什么：**源码编译到了哪里，启动的是哪个类，运行 classpath 是否覆盖了它需要的类。** 这些信息在命令行里由我们显式写出，在 IDE 中则由项目设置和运行配置保存并传递。
 
 ## 参考资料
 
@@ -378,7 +403,9 @@ Visual Basic（VB）等语言可以生成 EXE 可执行文件，再将编译产�
 - [Oracle JDK 21：`java` 命令与 classpath](https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html)
 - [Oracle Java SE 21：`ClassLoader` API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ClassLoader.html)
 - [Java 虚拟机规范 21：class 文件格式](https://docs.oracle.com/javase/specs/jvms/se21/html/)
-- [Oracle JDK 21：创建定制 Java 运行时](https://docs.oracle.com/en/java/javase/21/jpackage/image-and-runtime-modifications.html)
-- [JAR 文件规范](https://docs.oracle.com/en/java/javase/21/docs/specs/jar/jar.html)
-- [Oracle：Web 应用的 WAR 打包结构](https://docs.oracle.com/javaee/7/tutorial/packaging003.htm)
-- [Microsoft：Visual Basic 的编译产物](https://learn.microsoft.com/en-us/dotnet/visual-basic/reference/command-line-compiler/sample-compilation-command-lines)
+- [Eclipse：Java Build Path](https://help.eclipse.org/latest/topic/org.eclipse.jdt.doc.user/reference/ref-properties-build-path.htm)
+- [Eclipse：Java Application 启动配置](https://help.eclipse.org/latest/topic/org.eclipse.jdt.doc.user/tasks/tasks-java-local-configuration.htm)
+- [IntelliJ IDEA：源码目录](https://www.jetbrains.com/help/idea/content-roots.html)
+- [IntelliJ IDEA：编译输出设置](https://www.jetbrains.com/help/idea/configure-modules.html#module-compiler-output)
+- [IntelliJ IDEA：依赖配置](https://www.jetbrains.com/help/idea/working-with-module-dependencies.html)
+- [IntelliJ IDEA：Application 运行配置](https://www.jetbrains.com/help/idea/run-debug-configuration-java-application.html)

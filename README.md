@@ -2,11 +2,14 @@
 
 面向 Java 技术文章的写作与实验仓库。每个章节同时收纳正文和实验，但不预设文章结构、构建工具或技术栈。
 
+系列写作以[局部完备](writing-principles.md)为核心：每篇文章在明确范围内解决一个问题，模型能够解释文中的实验现象。
+
 ## 仓库结构
 
 ```text
 .
 ├── outline.md                 # 文章与章节索引
+├── writing-principles.md      # 系列写作的内容取舍原则
 └── chapters/
     └── NN-topic-name/
         ├── article/           # 本章正文及相关素材

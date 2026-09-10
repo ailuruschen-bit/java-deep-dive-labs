@@ -8,7 +8,7 @@
 
 脚本会检查 `java` 和 `javac` 都是 21，并在子 shell 中清除继承的 `CLASSPATH` 和 Java 启动选项，以保证演示结果一致。它不会修改终端原有的环境配置。每次执行都会重新编译本轮用到的 class 文件；下面出现的三个加载失败也是验证内容，脚本会检查对应错误。
 
-命令使用 macOS/Linux 的 classpath 分隔符 `:`；Windows 手工执行时使用 `;`。代码注释统一使用英文。
+命令使用 macOS/Linux 的 classpath 条目分隔符 `:`；Windows 手工执行时使用 `;`。代码注释统一使用英文。
 
 ## 1. 从当前目录编译并启动
 
@@ -76,7 +76,7 @@ Error: Could not find or load main class dev.deepdive.app.Main
 Caused by: java.lang.ClassNotFoundException: dev.deepdive.app.Main
 ```
 
-继续留在 `step-2/`，通过 `-cp out` 将搜索起点设为 `step-2/out/`：
+继续留在 `step-2/`，通过 `-cp out` 将 classpath 设为只包含 `out` 这一个目录条目，以 `step-2/out/` 作为类文件的搜索起点：
 
 ```bash
 java -cp out dev.deepdive.app.Main
@@ -84,9 +84,11 @@ java -cp out dev.deepdive.app.Main
 
 这次输出 `Hello, Java!`。这里的 `out` 是相对于当前工作目录的路径。
 
-## 4. 用多个 classpath 分开存放自己的类和依赖
+## 4. 在一个 classpath 中配置多个条目
 
-三个源文件保存在 `multiple-classpath/src/` 下。`Main` 调用 `Greeting`，`Greeting` 再调用 `Punctuation`；它们的包名分别为 `dev.deepdive.app`、`dev.deepdive.greeting`、`dev.deepdive.punctuation`。
+这里模拟一个使用外部依赖的项目：我们编写的 `Main` 调用 `Greeting`，`Greeting` 再调用 `Punctuation`。`Greeting` 和 `Punctuation` 已由依赖提供方定义，包名分别为 `dev.deepdive.greeting` 和 `dev.deepdive.punctuation`。作为使用方，我们只使用它们编译好的 class 产物，并保留提供方定义的包名；自己的 `Main` 则位于 `dev.deepdive.app` 包中。
+
+为了让实验能够完整复现，仓库在 `multiple-classpath/src/` 下保留了这三个类的源码。下面先编译两个依赖，是在模拟提供方构建产物的步骤；接着编译和运行 `Main` 时，使用的是这些 class 产物。
 
 脚本会创建 `deployment/`。以下命令均以它作为工作目录：
 
@@ -101,7 +103,7 @@ javac -cp 'lib001:lib002' -d . \
   ../multiple-classpath/src/app/dev/deepdive/app/Main.java
 ```
 
-编译时的 `javac -cp` 指明依赖所在的搜索起点，`-d` 指明这次编译结果的输出起点。生成的目录是：
+编译时的 `javac -cp` 设置 classpath，本例中的每个目录条目都提供一个类文件搜索起点；`-d` 指明这次编译结果的输出起点。生成的目录是：
 
 ```text
 deployment/                     ← 工作目录，也是 Main 的搜索起点
@@ -127,11 +129,11 @@ deployment/                     ← 工作目录，也是 Main 的搜索起点
 java -cp '.:lib001:lib002' dev.deepdive.app.Main
 ```
 
-输出为 `Hello, classpath!`。`.`、`lib001`、`lib002` 分别是三个搜索起点；进入每个起点后，都按照类名对应的包结构继续寻找。
+输出为 `Hello, classpath!`。这里配置的是一个 classpath，其中包含 `.`、`lib001`、`lib002` 三个目录条目。每个条目都是一个类文件搜索起点，从该目录出发，再按照类名对应的包结构继续寻找。
 
 ## 5. 把存放目录误写进类名
 
-`Greeting.java` 中写的是 `package dev.deepdive.greeting;`，没有 `lib001`。`lib001` 是我们保存依赖的目录，不能因此给类名增加一个 `lib001.` 前缀。
+提供方编写 `Greeting.java` 时，包声明是 `package dev.deepdive.greeting;`，没有 `lib001`。`lib001` 是我们保存依赖的目录，不能因此给类名增加一个 `lib001.` 前缀。
 
 仍在 `deployment/`，观察下面的错误命令：
 
@@ -145,13 +147,13 @@ java -cp . lib001.dev.deepdive.greeting.Greeting
 
 ## 6. 漏掉一个依赖目录
 
-仍在 `deployment/`，只配置 `.` 和 `lib001`：
+仍在 `deployment/`，让 classpath 只包含 `.` 和 `lib001` 两个条目：
 
 ```bash
 java -cp '.:lib001' dev.deepdive.app.Main
 ```
 
-`Main` 和 `Greeting` 能被找到，但执行到 `Greeting` 对 `Punctuation` 的调用时，缺少 `lib002`，因此报告：
+这次 `Main` 已经启动，`Greeting` 也能被找到。但执行到 `Greeting` 对 `Punctuation` 的调用时，classpath 中缺少 `lib002` 条目，类加载器找不到 `Punctuation`。本例的这次加载失败以 `ClassNotFoundException` 作为原因，最终向程序报告 `NoClassDefFoundError`：
 
 ```text
 Exception in thread "main" java.lang.NoClassDefFoundError: dev/deepdive/punctuation/Punctuation
@@ -163,4 +165,4 @@ Exception in thread "main" java.lang.NoClassDefFoundError: dev/deepdive/punctuat
 Caused by: java.lang.ClassNotFoundException: dev.deepdive.punctuation.Punctuation
 ```
 
-补回 `lib002` 后，就回到第 4 步的成功命令。
+补回 `lib002` 这个条目后，就回到第 4 步的成功命令。

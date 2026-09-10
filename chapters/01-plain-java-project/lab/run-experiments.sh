@@ -90,7 +90,7 @@ echo "5. Stay in step-2 and use -cp out to find the main class:"
 )
 
 echo
-echo "6. Compile into three class path roots: deployment, lib001, and lib002:"
+echo "6. Compile into directories for three class path entries: deployment, lib001, and lib002:"
 (
   cd "$deployment_root"
   javac -d lib002 \
@@ -102,7 +102,7 @@ echo "6. Compile into three class path roots: deployment, lib001, and lib002:"
 )
 
 echo
-echo "7. Run from deployment with all three class path roots:"
+echo "7. Run from deployment with one class path containing three entries:"
 (
   cd "$deployment_root"
   java -cp '.:lib001:lib002' dev.deepdive.app.Main
@@ -119,7 +119,7 @@ echo "8. Prefix the class name with lib001 and observe the name mismatch:"
 )
 
 echo
-echo "9. Omit lib002 and observe the missing dependency:"
+echo "9. Omit the lib002 class path entry and observe the missing dependency:"
 (
   cd "$deployment_root"
   expect_failure \
