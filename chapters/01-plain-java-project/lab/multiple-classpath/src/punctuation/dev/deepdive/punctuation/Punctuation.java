@@ -4,7 +4,7 @@ public final class Punctuation {
     private Punctuation() {
     }
 
-    public static String exclamationMark() {
+    public static String mark() {
         return "!";
     }
 }

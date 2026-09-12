@@ -8,6 +8,16 @@
 **/target/
 **/build/
 **/deployment/
+
+# Track only the two application sources inside this chapter's deployment tree.
+!/chapters/01-plain-java-project/lab/deployment/
+/chapters/01-plain-java-project/lab/deployment/**
+!/chapters/01-plain-java-project/lab/deployment/dev/
+!/chapters/01-plain-java-project/lab/deployment/dev/deepdive/
+!/chapters/01-plain-java-project/lab/deployment/dev/deepdive/app/
+!/chapters/01-plain-java-project/lab/deployment/dev/deepdive/app/Main.java
+!/chapters/01-plain-java-project/lab/deployment/dev/deepdive/app/MessageService.java
+
 **/*.class
 **/.classpath
 **/.project
