@@ -2,7 +2,7 @@
 
 我们先把 Java 项目缩到最小：一个 `Main.java`，一套 JDK。不用 Eclipse 或 IntelliJ IDEA，不用 Maven，也不引入 Spring，编译和启动直接使用 `javac` 与 `java`。
 
-沿着这条最短路径，我们逐步拆开程序的运行过程：写下的源码怎样变成 class 文件，传入的类名怎样对应到磁盘上的文件，以及 classpath 怎样分别决定编译和运行时从哪里查找依赖。
+沿着这条最短路径，我们逐步拆开程序的运行过程：写下的源码怎样变成 class 文件，传入的类名怎样对应到磁盘上的文件，以及编译和运行阶段各自的 classpath 怎样决定从哪里查找所需的类。
 
 ## 从 JDK 提供的工具开始
 
@@ -187,7 +187,7 @@ classpath 并不只用于启动程序。编译器需要查找依赖类的声明�
 ```text
 relativePath = className.replace(".", "/") + ".class"
 
-for each entry in classpath:  // Why multiple entries? We'll come back to this.
+for each entry in classpath:  // 为什么需要多个条目？后面用实验说明。
     classFile = joinPath(entry, relativePath)
     if classFile exists:
         bytes = read(classFile)
