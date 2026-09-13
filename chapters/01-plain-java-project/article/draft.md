@@ -4,6 +4,8 @@
 
 沿着这条最短路径，我们逐步拆开程序的运行过程：写下的源码怎样变成 class 文件，传入的类名怎样对应到磁盘上的文件，以及编译和运行阶段各自的 classpath 怎样决定从哪里查找所需的类。
 
+然后，我们把这些 class 文件收进 JAR，再回到 Maven 和 Spring Boot 项目中，观察同一套查找关系怎样继续发挥作用。
+
 ## 从 JDK 提供的工具开始
 
 我们熟悉的 `javac` 和 `java` 都由 JDK 提供。本文用 `javac` 将 `.java` 源文件编译成 `.class` 字节码文件，再用 `java` 启动 JVM，加载并执行编译结果：
@@ -168,7 +170,7 @@ dev/deepdive/app/Main.class
 
 ## classpath：给类名一个搜索起点
 
-本文中的应用类都以 class 文件的形式放在普通目录中。要根据类名找到它们，需要先确定从哪些目录开始查找。这组查找位置由 **classpath** 指定：**一个 classpath 可以包含多个条目；在本文中，每个条目都是一个目录，也就是类文件的搜索起点。**
+当前实验中的应用类都以 class 文件的形式放在普通目录中。要根据类名找到它们，需要先确定从哪些目录开始查找。这组查找位置由 **classpath** 指定：**一个 classpath 可以包含多个条目；在当前实验中，每个条目都是一个目录，也就是类文件的搜索起点。**
 
 classpath 并不只用于启动程序。编译器需要查找依赖类的声明，运行时需要查找参与执行的字节码，两者分别使用各自的 classpath 配置。`javac -cp` 配置编译阶段的查找位置，`java -cp` 配置运行阶段的查找位置。
 
@@ -182,7 +184,7 @@ classpath 并不只用于启动程序。编译器需要查找依赖类的声明�
 
 执行入口方法之前，需要先根据类名找到字节码，将其加载到内存，在 JVM 中建立对应的类。负责这项工作的组件，叫作**类加载器（ClassLoader）**。
 
-针对本文这种从普通目录中查找应用类的场景，我们可以用下面这段伪代码描述运行时的查找和加载过程：
+针对当前这种从普通目录中查找应用类的场景，我们可以用下面这段伪代码描述运行时的查找和加载过程：
 
 ```text
 relativePath = className.replace(".", "/") + ".class"
@@ -490,6 +492,262 @@ Caused by: java.lang.ClassNotFoundException: dev.deepdive.punctuation.Punctuatio
 
 到这里，我们已经把编译和运行的关系分开了：编译器需要拿到源码与依赖的类型声明，生成自己的 class 文件；启动时，再指定入口类，并让运行 classpath 覆盖程序需要的字节码。这两次查找分别配置，但都要遵守类名与目录的对应关系。
 
+## 把 class 文件收进 JAR
+
+如果要把这份程序交给别人，我们可以连同目录结构一起复制。但类多起来后，把散落的文件收进几个归档，会更方便传递和管理。这就是 **JAR（Java Archive）** 的用途：它以 ZIP 格式为基础，把 class 文件及其他资源保存在一个文件里，同时保留内部的目录结构。
+
+`javac` 负责把源码编译成 class 文件，JDK 提供的另一个命令 `jar` 则把已有文件复制进归档。**编译改变代码的表示形式，打包改变文件的组织方式。** 打包完成后，原目录里的 class 文件仍然保留。
+
+下面继续使用 `Main`、`MessageService`、`Greeting` 和 `Punctuation`，但换到独立的 `lab/jar-classpath/work` 实验目录，不改动前面的文件。准备好的两份应用源码在 `src/dev/deepdive/app/` 下，两个外部 class 文件仍分别位于 `lib001` 和 `lib002`：
+
+```text
+work/  ← 接下来命令的工作目录
+├── src/dev/deepdive/app/
+│   ├── Main.java
+│   └── MessageService.java
+├── lib001/dev/deepdive/greeting/Greeting.class
+├── lib002/dev/deepdive/punctuation/Punctuation.class
+└── lib/  ← 用来放打包后的依赖
+```
+
+### 搜索起点也可以是一份 JAR
+
+先把两个外部依赖分别打包：
+
+```bash
+jar --create --file lib/greeting.jar -C lib001 .
+jar --create --file lib/punctuation.jar -C lib002 .
+```
+
+`--create` 表示创建归档，`--file` 指定生成的 JAR 文件。这里最值得留意的是 `-C lib001 .`：从 `lib001` 里面取文件，把它的内容放到归档根部，**不把 `lib001` 这一层也收进去**。它不会改变我们终端的工作目录。
+
+我们可以用下面的命令查看包内的条目：
+
+```bash
+jar --list --file lib/greeting.jar
+```
+
+把列出的条目画成目录树，结构是：
+
+```text
+greeting.jar
+├── META-INF/
+│   └── MANIFEST.MF
+└── dev/
+    └── deepdive/
+        └── greeting/
+            └── Greeting.class
+```
+
+先关注 `dev/deepdive/greeting/Greeting.class`。它与原来相对于 `lib001` 的路径完全相同，只是这次作为归档中的一个条目保存。`META-INF/MANIFEST.MF` 是打包工具生成的清单文件，下一步指定启动入口时会用到它。
+
+因此，classpath 的条目可以从目录换成 JAR，类名不用改变：
+
+```text
+类名：dev.deepdive.greeting.Greeting
+
+目录条目 lib001
+  → 查找 lib001/dev/deepdive/greeting/Greeting.class
+
+JAR 条目 lib/greeting.jar
+  → 查找包内条目 dev/deepdive/greeting/Greeting.class
+```
+
+对编译器也是一样。仍在 `work` 目录，使用这两个 JAR 编译自己的代码：
+
+```bash
+javac -cp "lib/greeting.jar:lib/punctuation.jar" -d app-classes \
+  src/dev/deepdive/app/Main.java \
+  src/dev/deepdive/app/MessageService.java
+```
+
+这次我们用前面见过的 `-d`，把生成的 class 文件放进 `app-classes`，与源码分开。接着只把编译结果打进应用 JAR，并启动程序：
+
+```bash
+jar --create --file app.jar -C app-classes .
+java -cp "app.jar:lib/greeting.jar:lib/punctuation.jar" dev.deepdive.app.Main
+```
+
+预期输出仍然是 `Hello, classpath!`。三个条目现在都是 JAR：`app.jar` 提供我们自己的两个类，其余两个 JAR 提供外部依赖。运行时可以直接读取包内的 class 文件，不需要我们先手动解压。
+
+> 实操截图待补：打包两个依赖、查看 `greeting.jar` 内部路径，再使用 JAR 编译并启动应用。
+
+### 把入口和依赖位置写进清单
+
+我们平时还会见到更短的启动命令：
+
+```bash
+java -jar app.jar
+```
+
+这里传给 `-jar` 的确实是文件路径，不再是前面那种“classpath 加入口类名”的写法。既然没有在命令中写入口类，运行环境就需要到 JAR 中读取这项信息。
+
+我们为应用准备一个 `app-manifest.mf`：
+
+```text
+Main-Class: dev.deepdive.app.Main
+Class-Path: lib/greeting.jar lib/punctuation.jar
+
+```
+
+`Main-Class` 指定从哪个类的 `main` 方法开始。`Class-Path` 则给出这份应用 JAR 需要的外部依赖。这里仍然是三个独立的 JAR，没有把两个依赖复制进 `app.jar`。
+
+用这份清单重新打包：
+
+```bash
+jar --create --file app.jar --manifest app-manifest.mf -C app-classes .
+java -jar app.jar
+```
+
+`jar` 会把清单内容写入包内的 `META-INF/MANIFEST.MF`。文件末尾保留换行，`Class-Path` 中的多个位置用空格分隔，而不是命令行 `-cp` 的冒号。这里的 `lib/greeting.jar`、`lib/punctuation.jar` 相对于 **`app.jar` 所在目录** 解析，不是相对于启动命令的工作目录。
+
+这就解释了为什么我们可以把 `app.jar` 与整个 `lib` 目录一起交付：只要它们的相对位置保持不变，清单就能继续指向那两份依赖。
+
+**`java -jar` 不会沿用命令行 `-cp` 的那套设置。** 所以不能指望写成 `java -cp "lib/greeting.jar:lib/punctuation.jar" -jar app.jar` 就补上依赖；本例使用的是应用清单里的 `Class-Path`。
+
+> 实操截图待补：查看应用清单，使用 `java -jar app.jar` 启动，再从其他工作目录启动同一份应用，观察外部依赖仍然能够找到。
+
+## Maven 把哪些信息交给了编译器
+
+到目前为止，源码文件、编译输出、依赖位置都由我们自己在命令中指定。回到平时的项目，这些信息往往已经写进了 `pom.xml`，或者由 Maven 的约定提供。
+
+为了把观察连接到实际开发，仓库准备了一个只在终端输出消息、不启动 Web 服务的 Spring Boot 示例。它仍使用前面的两个外部依赖。我们先只看它作为 Maven 项目的一面；代码和构建配置已经放在独立的 `lab/maven-boot-classpath` 中。
+
+实验准备步骤会把 `greeting.jar` 和 `punctuation.jar` 登记到这个项目专用的本地依赖仓库，也就是 Maven 按依赖名称和版本查找文件的目录。因此，Maven 不是发现项目旁边恰好有两个 JAR 就自动使用它们，而是根据 `pom.xml` 中的声明解析依赖。例如，`Greeting` 所在的 JAR 对应：
+
+```xml
+<dependency>
+    <groupId>dev.deepdive.lab</groupId>
+    <artifactId>greeting</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+这三项信息标识我们要使用哪一份依赖，不是 Java 包名。`Punctuation` 所在的 JAR 用相同方式声明，`artifactId` 为 `punctuation`。
+
+```text
+maven-boot-classpath/
+├── pom.xml
+├── src/main/java/dev/deepdive/app/
+│   ├── Main.java
+│   └── MessageService.java
+└── target/
+    └── classes/dev/deepdive/app/
+        ├── Main.class
+        └── MessageService.class
+```
+
+`src/main/java` 是这个项目的源码目录，`target/classes` 是主代码的编译输出目录。依赖声明写在 `pom.xml` 中，Maven 解析这些声明，取得相应的 JAR 文件，再让编译插件使用这些位置。
+
+我们在项目目录执行：
+
+```bash
+./mvnw compile
+```
+
+这里的 `mvnw` 是仓库配套的 Maven 启动脚本，用于选择固定的 Maven 版本。它不改变这一步的含义：编译项目源码，生成 `target/classes` 下的 class 文件。
+
+从本文的视角看，编译器仍然需要同样的信息：哪些源码参与编译、结果写到哪里、引用的类型从哪里查找。区别在于，这次由 Maven 和编译插件组织这些信息，不需要我们逐份手写源文件路径和 `javac -cp`。
+
+### 有了 pom.xml，独立启动时仍要找到依赖
+
+Maven 能找到依赖，并不意味着我们在终端单独执行的 `java` 会自动读取 `pom.xml`。可以让 Maven 导出当前项目运行阶段需要的依赖路径：
+
+```bash
+./mvnw dependency:build-classpath \
+  -DincludeScope=runtime \
+  -Dmdep.outputFile=target/runtime-classpath.txt
+```
+
+这份文件保存的是**依赖 JAR 的路径**，不包含我们自己的 `target/classes`。再把它与应用类的搜索起点拼在一起，启动命令就回到了前面已经理解的形式：
+
+```bash
+java -cp "target/classes:$(cat target/runtime-classpath.txt)" dev.deepdive.app.Main
+```
+
+这里的 `$(cat ...)` 只是把文件中的那串路径放进命令。真正交给 `java` 的，仍然是包含 `target/classes` 和多份依赖 JAR 的一个 classpath。
+
+所以，`pom.xml` 中的依赖声明与 JVM 使用的 classpath 不是同一个东西：前者告诉构建工具需要哪些依赖，后者给出查找类所需的位置。Maven 帮我们从前者整理出后者。
+
+> 实操截图待补：观察 `src/main/java` 与 `target/classes`，导出依赖路径，再加上 `target/classes` 启动程序。
+
+## Spring Boot 的一个 JAR，里面装了什么
+
+前面的普通应用 JAR 与两个依赖 JAR 是分开的。我们也经常把一个 Spring Boot JAR 复制到服务器上，然后直接执行 `java -jar`。那些外部依赖去了哪里？
+
+在本次示例中，构建配置让 Maven 保留普通 JAR，同时让 Spring Boot 打包插件额外生成一份可执行 JAR：
+
+```bash
+./mvnw package
+```
+
+```text
+target/
+├── classpath-demo.jar       ← 普通打包产物
+└── classpath-demo-boot.jar  ← Spring Boot 重打包产物
+```
+
+普通 JAR 打包步骤收纳的是本项目的编译输出，不会因为 `pom.xml` 声明了依赖，就自动把那些依赖一起塞进来。这里的第二份产物来自我们配置的 Spring Boot `repackage` 操作；它不是所有 Maven 项目执行 `package` 都会得到的结果。
+
+查看第二份 JAR 的内容，会看到这样的布局。图中只保留与类查找有关的部分：
+
+```text
+classpath-demo-boot.jar
+├── META-INF/
+│   └── MANIFEST.MF
+├── org/springframework/boot/loader/
+│   └── … 启动器的 class 文件
+└── BOOT-INF/
+    ├── classes/
+    │   └── dev/deepdive/app/
+    │       ├── Main.class
+    │       └── MessageService.class
+    └── lib/
+        ├── greeting-1.0.0.jar
+        ├── punctuation-1.0.0.jar
+        └── … Spring Boot 等依赖 JAR
+```
+
+自己的类放在 `BOOT-INF/classes`，依赖 JAR 则放在 `BOOT-INF/lib`。但这还没有回答全部问题：前面普通 JAR 的类名查找是从包的根部开始，为什么这里多出的 `BOOT-INF/classes` 不会妨碍启动？JAR 里面再装一份 JAR，又由谁读取？
+
+答案藏在这份可执行包的清单里：
+
+```text
+Main-Class: org.springframework.boot.loader.launch.JarLauncher
+Start-Class: dev.deepdive.app.Main
+```
+
+标准 Java 启动器读取的是 `Main-Class`。这里它先启动的不是我们的 `Main`，而是 Spring Boot 提供的 `JarLauncher`。
+
+这个启动器知道本包的布局，会为 `BOOT-INF/classes` 中的应用类，以及 `BOOT-INF/lib` 里的嵌套 JAR 安排相应的查找和加载，再根据 `Start-Class` 调用我们自己的入口方法：
+
+```text
+java -jar classpath-demo-boot.jar
+        │
+        ▼
+Main-Class → Spring Boot 启动器
+        │
+        ├── 应用类：BOOT-INF/classes
+        ├── 依赖类：BOOT-INF/lib 中的各份 JAR
+        │
+        ▼
+Start-Class → dev.deepdive.app.Main.main
+```
+
+因此，`BOOT-INF/classes` 是 Boot 这套启动安排使用的位置，不是我们需要加到 Java 包名里的前缀。`Start-Class` 也不是标准 Java 启动器自己解释的入口属性，而是由 Boot 启动器使用。
+
+我们看到的是同一个 `java -jar` 命令，包里却可以放入不同的启动安排：前面的普通 JAR 直接从应用 `Main` 开始，Boot 的可执行 JAR 先从启动器开始。**JVM 没有因为文件来自 Spring Boot，就自动识别一个特殊目录；是包里的启动器把应用类和依赖的位置连接起来。**
+
+> 实操截图待补：对比普通 JAR 与 Boot JAR 的内容，查看 Boot JAR 的两项入口属性，再启动 `classpath-demo-boot.jar`。
+
+## 存放形式变了，查找的问题没变
+
+从散落的 class 文件，到普通 JAR，再到 Spring Boot 的可执行 JAR，变化的是类的存放形式，以及谁替我们安排查找位置。
+
+编译时，要让编译器取得源码引用的类型声明；运行时，要让运行环境找到入口类和执行过程中用到的类。JAR 负责组织文件，Maven 负责组织构建与依赖信息，Boot 启动器则理解它自己的可执行包布局。
+
+回到一个具体项目，我们已经可以沿着这几项信息判断启动问题：要找的类叫什么，它在哪里，当前采用哪种启动方式，这种启动方式从哪些位置查找。
+
 ## 回到熟悉的 IDE
 
 理解了这条编译和启动的链路，我们可以回到平时使用的 Eclipse 或 IntelliJ IDEA，带着一个问题探索：**我们刚才手动完成的这些命令，是怎样被 IDE 简化成一次“运行”操作的？**
@@ -503,3 +761,11 @@ Caused by: java.lang.ClassNotFoundException: dev.deepdive.punctuation.Punctuatio
 - [Oracle Java SE 21：`ClassLoader` API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ClassLoader.html)
 - [Java 虚拟机规范 21：class 文件格式](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)
 - [Java 虚拟机规范 21：使用用户定义的类加载器创建类](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-5.html#jvms-5.3.2)
+- [Oracle JDK 21：jar 命令](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jar.html)
+- [Oracle JDK 21：JAR 文件规范](https://docs.oracle.com/en/java/javase/21/docs/specs/jar/jar.html)
+- [Maven：标准目录布局](https://maven.apache.org/guides/introduction/introduction-to-the-standard-directory-layout.html)
+- [Maven：依赖机制](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html)
+- [Maven Dependency Plugin：导出依赖 classpath](https://maven.apache.org/plugins/maven-dependency-plugin/build-classpath-mojo.html)
+- [Spring Boot 3.5：嵌套 JAR 的结构](https://docs.spring.io/spring-boot/3.5/specification/executable-jar/nested-jars.html)
+- [Spring Boot 3.5：可执行 JAR 的启动](https://docs.spring.io/spring-boot/3.5/specification/executable-jar/launching.html)
+- [Spring Boot 3.5：Maven 插件的打包操作](https://docs.spring.io/spring-boot/3.5/maven-plugin/packaging.html)
