@@ -1,12 +1,14 @@
 # Java の起動をひもとく：コンパイル、クラスロード、classpath
 
+[中文](zh-CN.md) · [日本語](ja.md) · [English](en.md)
+
 Java プロジェクトを、`Main.java` と JDK だけにしてみましょう。Eclipse や IntelliJ IDEA、Maven は使わず、Spring も持ち込みません。コンパイルと起動に使うのは `javac` と `java` だけです。
 
 この最小構成から、ソースコードが class ファイルになるまで、起動時に指定したクラス名がディスク上のファイルに結び付くまでをたどります。そのつながりを支えるのが、コンパイル時と実行時それぞれの **classpath** です。
 
 後半では class ファイルを JAR にまとめ、普段の Maven プロジェクトや Spring Boot の実行可能 JAR でも、同じ考え方がどう使われているかを確認します。
 
-コマンドと実行例は JDK 21、macOS の環境によるものです。本文のコマンドは macOS／Linux 向けに記述しています。
+コマンドと実行例は JDK 21、macOS の環境によるものです。本文のコマンドは macOS／Linux 向けに記述しています。[実験用コードと再現手順](../lab/README.md)も用意しています。手順書は中国語ですが、本文のコマンドと実際の操作画面だけでも流れを追えます。
 
 ## JDK のツールから始める
 
@@ -469,7 +471,7 @@ Hello, classpath!
 
 ![コンパイル時と実行時にそれぞれ classpath を指定し、Main.class と MessageService.class を生成してから正常に起動する](assets/experiment-05-compile-and-run-classpath.png)
 
-### 実行時の依存クラスを一つ欠かす
+### 依存クラスの探索先を一つ外す
 
 次に、実行時の classpath から `lib002` だけを外してみます。
 
@@ -484,7 +486,7 @@ java.lang.NoClassDefFoundError: dev/deepdive/punctuation/Punctuation
 Caused by: java.lang.ClassNotFoundException: dev.deepdive.punctuation.Punctuation
 ```
 
-この実験では、すでに `Main.main` に入り、`MessageService` と `Greeting` も読み込めています。しかし `Punctuation` が必要になった時点で、現在の classpath からそのクラスを見つけられず、探索は `ClassNotFoundException` になります。実行に必要なクラスを読み込めなかったため、JVM はその例外を原因とする `NoClassDefFoundError` をプログラムに報告します。
+この実験では、すでに `Main.main` に入り、`MessageService` と `Greeting` も読み込めています。しかし `Punctuation` が必要になった時点で、現在の classpath からそのクラスを見つけられず、クラスローダーが `ClassNotFoundException` を報告します。実行に必要なクラスを読み込めなかったため、JVM はその例外を原因とする `NoClassDefFoundError` をプログラムに報告します。
 
 `Punctuation.class` を削除したわけではありません。ディスク上には残っています。足りないのは classpath の `lib002` です。コンパイル時に宣言が見つかったからといって、次の起動でもクラスを見つけられるとは限りません。
 
@@ -587,10 +589,10 @@ JAR を作るには入力と内部構造を意識しますが、使う際に新�
 ```text
 クラス名：dev.deepdive.greeting.Greeting
 
-ディレクトリエントリ lib001
+classpath エントリ（ディレクトリ）lib001
   → lib001/dev/deepdive/greeting/Greeting.class を探す
 
-JAR エントリ lib/greeting.jar
+classpath エントリ（JAR）lib/greeting.jar
   → JAR 内の dev/deepdive/greeting/Greeting.class を探す
 ```
 
@@ -684,9 +686,9 @@ java -jar app.jar
 
 必要な依存の一覧と保存先が分かれば、Maven は JAR の実際のパスを取り出して、その段階の classpath を組み立てられます。**依存ファイルを探し、そのパスを `-cp` に書いていた作業に相当します。** プロジェクトの設定を基にできるため、私たちが一つずつ転記する必要はありません。
 
-classpath を組み立てられるなら、用途別に異なる一覧を用意することもできます。主コードのコンパイル、テストコードのコンパイル、アプリケーションの実行で、同じ依存一覧を使う必要はないからです。
+classpath を組み立てられるなら、用途別に異なる一覧を用意することもできます。アプリケーションコードのコンパイル、テストコードのコンパイル、アプリケーションの実行で、同じ依存一覧を使う必要はないからです。
 
-依存の `scope` は、**その依存をどの用途の classpath に含めるか**を指定するものです。たとえばテストコードで使う JUnit には、`<scope>test</scope>` を指定します。テストコードのコンパイル時には JUnit が含まれ、主コードのコンパイル時には含まれません。二種類のソースに対して、異なるコンパイル用の依存を用意できます。
+依存の `scope` は、**その依存をどの用途の classpath に含めるか**を指定するものです。たとえばテストコードで使う JUnit には、`<scope>test</scope>` を指定します。テストコードのコンパイル時には JUnit が含まれ、アプリケーションコードのコンパイル時には含まれません。二種類のソースに対して、異なるコンパイル用の依存を用意できます。
 
 ### 2. プロジェクトファイルの管理：ソースと生成物をどこに置くか
 
@@ -697,20 +699,20 @@ project/
 ├── pom.xml
 ├── src/
 │   ├── main/
-│   │   ├── java/             ← 主コード。以下は package に沿った構造
-│   │   └── resources/        ← 主コードが使う設定ファイルなど
+│   │   ├── java/             ← アプリケーションコード。以下は package に沿った構造
+│   │   └── resources/        ← アプリケーションが使う設定ファイルなど
 │   └── test/
 │       ├── java/             ← テストコード。以下も package に沿った構造
 │       └── resources/        ← テスト用のリソース
 └── target/                   ← ビルド生成物。バイトコード以外も含む
-    ├── classes/              ← 主コードの class ファイルとリソース
+    ├── classes/              ← アプリケーションの class ファイルとリソース
     ├── test-classes/         ← テストコードの class ファイルとリソース
     └── example-1.0.0.jar     ← 名前はプロジェクトの設定による
 ```
 
-二段階で見ると整理しやすくなります。`main` と `test` は用途の区分、`java` と `resources` はソースとリソースの区分です。ビルドでは、ソースはコンパイルし、リソースは通常、相対パスを保って出力先にコピーします。結果はそれぞれ `target/classes` と `target/test-classes` に集まります。
+二段階で見ると整理しやすくなります。`main` と `test` は用途の区分、`java` と `resources` はソースとリソースの区分です。ビルドでは、ソースはコンパイルし、リソースは通常、相対パスを保って出力先にコピーします。アプリケーションの class ファイルとリソースは `target/classes` に、テストの class ファイルとリソースは `target/test-classes` に集まります。
 
-これは、先ほどの `javac -d app-classes` と同じ種類の指定です。私たちは `app-classes` を選びましたが、Maven プロジェクトではデフォルトで `target` を生成物の置き場所とし、主コードを `target/classes`、テストコードを `target/test-classes` に出力します。
+これは、先ほどの `javac -d app-classes` と同じ種類の指定です。私たちは `app-classes` を選びましたが、Maven プロジェクトではデフォルトで `target` を生成物の置き場所とし、アプリケーションコードのコンパイル結果を `target/classes`、テストコードのコンパイル結果を `target/test-classes` に出力します。
 
 `src/main/java` はパッケージ名の一部ではありません。`dev.deepdive.app.Main` のソースは、その下の `dev/deepdive/app/Main.java` にあり、コンパイル後は `target/classes/dev/deepdive/app/Main.class` に置かれます。実行時の探索の起点は `target/classes` です。クラス名に `src`、`main`、`java` を加える必要はありません。
 
@@ -720,13 +722,13 @@ project/
 
 | ビルドで行うこと | ここまでの知識で捉えると |
 | --- | --- |
-| 主コードのコンパイル | 主ソース、コンパイル用の classpath、出力先 `target/classes` をコンパイラに渡す |
-| テストコードのコンパイル | 主コードの出力とテスト用依存を classpath に含め、結果を `target/test-classes` に出力する |
-| 通常の JAR の作成 | `target/classes` の主コードとリソースをまとめる。デフォルトではテストクラスや外部依存 JAR は入らない |
+| アプリケーションコードのコンパイル | アプリケーションのソース、コンパイル用の classpath、出力先 `target/classes` をコンパイラに渡す |
+| テストコードのコンパイル | アプリケーションのコンパイル結果とテスト用依存を classpath に含め、結果を `target/test-classes` に出力する |
+| 通常の JAR の作成 | `target/classes` のアプリケーションクラスとリソースをまとめる。デフォルトではテストクラスや外部依存 JAR は入らない |
 
 二種類のコンパイルは、入力ソース、依存一覧、出力先が異なる `javac -cp … -d …` と捉えられます。パッケージ化のファイル構成は、`jar --create --file … -C target/classes .` に相当します。これは各段階で必要な情報を対応付けたものであり、Maven が必ずこのコマンドを一行ずつ実行するという意味ではありません。
 
-いつものコマンドも、生成物と結び付けて読めます。`mvn compile` は主コードの class ファイルを生成し、`mvn test-compile` はテストコードのコンパイルまで進めます。デフォルトの通常の JAR プロジェクトでは、`mvn package` が成功すると、`target` にパッケージができます。入力、依存、出力先は Maven が設定と規約から決めます。
+いつものコマンドも、生成物と結び付けて読めます。`mvn compile` はアプリケーションの class ファイルを生成し、`mvn test-compile` はテストコードのコンパイルまで進めます。デフォルトの通常の JAR プロジェクトでは、`mvn package` が成功すると、`target` に JAR ができます。入力、依存、出力先は Maven が設定と規約から決めます。
 
 では、普段はどうやって Maven プロジェクトを起動しているのでしょうか。Maven には、あらゆるアプリケーションに共通する標準の起動コマンドがあるわけではありません。多くの場合は IDE で入口のクラスを選び、実行をクリックしています。IDE は Maven の設定から、コンパイル済みのクラスのディレクトリと、実行に必要な JAR のパスを classpath にまとめ、選んだクラスを起動します。
 
@@ -797,7 +799,7 @@ Start-Class: dev.deepdive.app.Main
 
 `java -jar` が読むのは、ここでも `Main-Class` です。ただし、最初に呼ばれるのは Spring Boot の `JarLauncher` です。このクラスはアーカイブのルートから `org/springframework/boot/loader/launch/` というパスにあり、先ほどの規則で見つけられます。
 
-`JarLauncher` は Boot の配置を理解しており、`BOOT-INF/classes` と `BOOT-INF/lib` 内の依存 JAR を探索対象にします。そのうえで `Start-Class` を読み、自分たちの入口クラスの `main` メソッドを呼び出します。**探索する場所を整えるコードを先に実行し、そこからアプリケーションに入る**、という一段が加わっています。
+`JarLauncher` は、Boot の配置に対応したクラスローダーを作ります。このクラスローダーが `BOOT-INF/classes` と `BOOT-INF/lib` 内の依存 JAR からクラスを探します。そのうえで `Start-Class` を読み、自分たちの入口クラスの `main` メソッドを呼び出します。単に通常の `-cp` を組み立てるだけではありません。通常の JAR の探索では、その中に入っている別の JAR まで自動的に探してはくれないためです。**クラスを読み込む仕組みを用意してから、アプリケーションの入口を呼ぶ**、という一段が加わっています。
 
 ```text
 java -jar app.jar
@@ -823,6 +825,7 @@ Start-Class → dev.deepdive.app.Main.main
 - [Oracle JDK 21：javac、複数ソースのコンパイルと型宣言の探索](https://docs.oracle.com/en/java/javase/21/docs/specs/man/javac.html)
 - [Oracle JDK 21：java と classpath](https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html)
 - [Oracle Java SE 21：ClassLoader API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ClassLoader.html)
+- [Java 言語仕様 21：バイナリ名](https://docs.oracle.com/javase/specs/jls/se21/html/jls-13.html#jls-13.1)
 - [Java 仮想マシン仕様 21：class ファイル形式](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)
 - [Java 仮想マシン仕様 21：ユーザー定義クラスローダーによるクラスの作成](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-5.html#jvms-5.3.2)
 - [Oracle JDK 21：jar コマンド](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jar.html)
@@ -831,6 +834,7 @@ Start-Class → dev.deepdive.app.Main.main
 - [Maven：標準ディレクトリレイアウト](https://maven.apache.org/guides/introduction/introduction-to-the-standard-directory-layout.html)
 - [Maven：依存関係の仕組み](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html)
 - [Maven：ビルドライフサイクル](https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html)
+- [IntelliJ IDEA：プロジェクトの依存とコンパイル時・実行時の classpath](https://www.jetbrains.com/help/idea/working-with-module-dependencies.html)
 - [Maven JAR Plugin：JAR に格納するディレクトリ](https://maven.apache.org/plugins/maven-jar-plugin/jar-mojo.html)
 - [Maven Archiver：マニフェストの起動クラスと依存パス](https://maven.apache.org/shared/maven-archiver/examples/classpath.html)
 - [Maven Dependency：依存ファイルの収集](https://maven.apache.org/plugins/maven-dependency-plugin/copy-dependencies-mojo.html)

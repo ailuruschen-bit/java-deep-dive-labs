@@ -4,6 +4,12 @@
 
 系列写作以[局部完备](writing-principles.md)为核心：每篇文章在明确范围内解决一个问题，模型能够解释文中的实验现象。
 
+## 第一篇：拆解 Java 启动
+
+[中文](chapters/01-plain-java-project/article/zh-CN.md) · [日本語](chapters/01-plain-java-project/article/ja.md) · [English](chapters/01-plain-java-project/article/en.md)
+
+从编译与 classpath，到 JAR、Maven 和 Spring Boot。配套 [实验](chapters/01-plain-java-project/lab/README.md) 与 [审校记录](chapters/01-plain-java-project/article/final-review.md) 一并保存在本章。
+
 ## 仓库结构
 
 ```text

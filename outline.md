@@ -2,10 +2,13 @@
 
 ## 01 · 拆解 Java 启动：编译、类加载与 classpath
 
-- [文章初稿](chapters/01-plain-java-project/article/draft.md)
+- [中文终稿](chapters/01-plain-java-project/article/zh-CN.md)
+- [日本語](chapters/01-plain-java-project/article/ja.md)
+- [English](chapters/01-plain-java-project/article/en.md)
 - [实验目录](chapters/01-plain-java-project/lab/)
-- 当前进度：先区分编译与运行的查找目的，再通过类名与目录、多源码和外部依赖实验说明各自的 classpath；以探索 IDE 如何简化编译和启动的开放式问题收尾
-- 实操材料：新版实验截图已补齐，分别展示编译失败、成功编译并运行、遗漏运行依赖
+- [终稿审校记录](chapters/01-plain-java-project/article/final-review.md)
+- 内容：从源码编译、类名与文件查找，到 JAR、清单启动，再回看 Maven 与 Spring Boot 的文件组织和启动方式。
+- 实操材料：三种语言复用 11 张真实终端截图；目录与 JAR 实验均已通过隔离验证。
 
 ## 后续选题
 

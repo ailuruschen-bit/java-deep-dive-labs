@@ -1,12 +1,14 @@
 # How Java Starts: Compilation, Class Loading, and the Classpath
 
+[中文](zh-CN.md) · [日本語](ja.md) · [English](en.md)
+
 Strip a Java project down to one `Main.java` and a JDK. No Eclipse or IntelliJ IDEA, no Maven, no Spring: just `javac` to compile and `java` to run.
 
 That gives us a direct view of the connection between our code and the files on disk. How does source code become a class file? How does a class name identify that file? And how do the compilation and runtime classpaths determine where to look for the classes we need?
 
 Once that connection is clear, we can package the files into JARs and recognize the same arrangement in Maven and Spring Boot projects.
 
-The examples use JDK 21 and a macOS/Linux shell. The screenshots show actual runs of the accompanying labs.
+The examples use JDK 21 and a macOS/Linux shell. The screenshots show actual runs of the [accompanying labs](../lab/README.md), whose setup instructions are in Chinese.
 
 ## Start with the JDK tools
 
@@ -333,7 +335,7 @@ Consider `Greeting.forName(name)`. The compiler must first find the declaration 
 
 For our two application classes, the declarations are available in the source files we pass to `javac`. We have no source for the external classes, so the compiler needs the type information in `Greeting.class` and `Punctuation.class`. **Reading those declarations does not execute `Greeting.forName` or `Punctuation.mark`.**
 
-From `deployment`, pass both source files to `javac`, initially without a compilation classpath:
+From `deployment`, pass both source files to `javac`, initially without explicitly configuring the compilation classpath:
 
 ```bash
 javac \
@@ -585,10 +587,10 @@ Packaging requires us to arrange input directories and archive contents. Using t
 ```text
 Class name: dev.deepdive.greeting.Greeting
 
-Directory entry: lib001
+Classpath entry (directory): lib001
   → file: lib001/dev/deepdive/greeting/Greeting.class
 
-JAR entry: lib/greeting.jar
+Classpath entry (JAR): lib/greeting.jar
   → archive entry: dev/deepdive/greeting/Greeting.class
 ```
 
@@ -704,7 +706,7 @@ project/
     └── example-1.0.0.jar     ← packaged output; its name is configurable
 ```
 
-Read the layout in two layers: `main` versus `test` distinguishes purpose; `java` versus `resources` distinguishes source code from resources. During a build, source is compiled, while resources are normally copied to the corresponding output directory with their relative paths preserved. The results end up in `target/classes` and `target/test-classes` respectively.
+Read the layout in two layers: `main` versus `test` distinguishes purpose; `java` versus `resources` distinguishes source code from resources. During a build, source is compiled, while resources are normally copied with their relative paths preserved. Application classes and resources go to `target/classes`; test classes and resources go to `target/test-classes`.
 
 This is the same arrangement we made with `javac -d app-classes`. We chose `app-classes` ourselves; Maven's default convention puts build output under `target`, with application compilation output in `target/classes` and test compilation output in `target/test-classes`.
 
@@ -793,7 +795,7 @@ Start-Class: dev.deepdive.app.Main
 
 `java -jar` still reads `Main-Class`, but the first code it runs is Spring Boot's `JarLauncher`. That class sits at `org/springframework/boot/loader/launch/` relative to the archive's top level, so it can be found using the rule we already know.
 
-`JarLauncher` understands Boot's layout. It sets up class loading to include `BOOT-INF/classes` and the dependency JARs in `BOOT-INF/lib`, then reads `Start-Class` and invokes our entry class's `main` method. **Run code that establishes the search locations, then run the application entry point:** that is the extra step.
+`JarLauncher` creates a class loader that understands Boot's layout: application classes under `BOOT-INF/classes` and nested dependency JARs under `BOOT-INF/lib`. It then reads `Start-Class` and invokes our entry class's `main` method. This is more than constructing an ordinary `-cp` argument: ordinary JAR lookup does not automatically search JARs nested inside another JAR. **Set up class loading first, then call the application entry point:** that is the extra step.
 
 ```text
 java -jar app.jar
@@ -819,6 +821,7 @@ Open a project you know and inspect its compilation output, packaged artifact, a
 - [Oracle JDK 21: javac, grouped source compilation, and type lookup](https://docs.oracle.com/en/java/javase/21/docs/specs/man/javac.html)
 - [Oracle JDK 21: java and the classpath](https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html)
 - [Oracle Java SE 21: ClassLoader API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ClassLoader.html)
+- [Java Language Specification 21: Binary Names](https://docs.oracle.com/javase/specs/jls/se21/html/jls-13.html#jls-13.1)
 - [Java Virtual Machine Specification 21: The class File Format](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)
 - [Java Virtual Machine Specification 21: Creating Classes with User-defined Class Loaders](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-5.html#jvms-5.3.2)
 - [Oracle JDK 21: jar](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jar.html)
@@ -827,6 +830,7 @@ Open a project you know and inspect its compilation output, packaged artifact, a
 - [Maven: Standard Directory Layout](https://maven.apache.org/guides/introduction/introduction-to-the-standard-directory-layout.html)
 - [Maven: Dependency Mechanism](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html)
 - [Maven: Build Lifecycle](https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html)
+- [IntelliJ IDEA: Project dependencies and compilation/runtime classpaths](https://www.jetbrains.com/help/idea/working-with-module-dependencies.html)
 - [Maven JAR Plugin: inputs to an ordinary JAR](https://maven.apache.org/plugins/maven-jar-plugin/jar-mojo.html)
 - [Maven Archiver: manifest entry point and dependency paths](https://maven.apache.org/shared/maven-archiver/examples/classpath.html)
 - [Maven Dependency: collecting dependency files](https://maven.apache.org/plugins/maven-dependency-plugin/copy-dependencies-mojo.html)

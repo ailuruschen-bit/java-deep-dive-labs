@@ -1,5 +1,7 @@
 # 拆解 Java 启动：编译、类加载与 classpath
 
+[中文](zh-CN.md) · [日本語](ja.md) · [English](en.md)
+
 我们先把 Java 项目缩到最小：一个 `Main.java`，一套 JDK。不用 Eclipse 或 IntelliJ IDEA，不用 Maven，也不引入 Spring，编译和启动直接使用 `javac` 与 `java`。
 
 沿着这条最短路径，我们逐步拆开程序的运行过程：写下的源码怎样变成 class 文件，传入的类名怎样对应到磁盘上的文件，以及编译和运行阶段各自的 classpath 怎样决定从哪里查找所需的类。
@@ -706,7 +708,7 @@ project/
     └── example-1.0.0.jar     ← 打包产物，名称由项目配置决定
 ```
 
-我们可以按两层来记：`main` 和 `test` 区分用途，`java` 和 `resources` 区分 Java 源码与资源。构建时，源码需要编译，资源通常按相对路径复制到对应的输出目录。它们最终分别汇集到 `target/classes` 和 `target/test-classes`。
+我们可以按两层来记：`main` 和 `test` 区分用途，`java` 和 `resources` 区分 Java 源码与资源。构建时，源码需要编译，资源通常按相对路径复制到对应的输出目录。主代码的 class 文件与资源汇集到 `target/classes`，测试代码的 class 文件与资源则汇集到 `target/test-classes`。
 
 这与前面指定 `javac -d app-classes` 是同一种安排：我们手动选择了 `app-classes`，而 Maven 项目默认约定把构建产物放在 `target` 下，其中主代码的编译结果放进 `target/classes`，测试代码的编译结果放进 `target/test-classes`。`src/main/java` 也不是包名的一部分：`dev.deepdive.app.Main` 的源码位于它下面的 `dev/deepdive/app/Main.java`，编译后则位于 `target/classes/dev/deepdive/app/Main.class`。启动时，应用类的搜索起点就是 `target/classes`，不需要把 `src`、`main` 或 `java` 写进类名。
 
