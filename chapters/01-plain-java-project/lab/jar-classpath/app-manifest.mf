@@ -1,0 +1,3 @@
+Main-Class: dev.deepdive.app.Main
+Class-Path: lib/greeting.jar lib/punctuation.jar
+

@@ -1,5 +1,7 @@
 # 纯 Java 运行实验
 
+JAR 部分使用独立目录，准备与截图命令见 [JAR 实操说明](jar-classpath/README.md)。下面的原有脚本不操作 JAR 实验。
+
 本实验使用 JDK 21，不依赖 IDE、Maven 或 Gradle。在本目录执行：
 
 ```bash
