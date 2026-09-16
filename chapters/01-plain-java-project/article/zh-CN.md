@@ -753,7 +753,7 @@ release/
 
 这套目录和清单不需要手动整理。**Maven 提供了自动收集运行依赖、生成清单和组装发行包的手段**，配置好后，构建就能生成这样的部署产物。也可以选择把应用和依赖中的类、资源合并到一个 JAR 中，再配置启动入口。
 
-具体配置可以按项目需要查阅文末资料，后续文章再展开。这里先抓住一点：无论采用哪种打包方式，都要让启动配置中的查找位置与交付文件的实际布局对应起来。
+无论采用哪种打包方式，都要让启动配置中的查找位置与交付文件的实际布局对应起来。
 
 ## 回看 Spring Boot：一个 JAR 怎样带上应用和依赖
 
@@ -813,30 +813,6 @@ Start-Class → dev.deepdive.app.Main.main
 从手动执行 `javac`、`java`，到 Maven 构建和 Spring Boot 可执行 JAR，我们始终在处理同一条链路：**把源码编译成 class 文件，让启动入口和它用到的类能够被找到。** 工具替我们组织了依赖、输出目录和启动信息，类名与物理文件之间的对应关系依然存在。
 
 现在不妨打开一个熟悉的项目，找出它的编译输出和打包产物，再看看实际的启动命令：入口类是谁，所需的类放在哪里，又由哪一段启动配置或代码把这些位置连接起来？试着用本文的知识，还原它从源码到运行的过程。
-
-## 参考资料
-
-- [Oracle JDK 21：`javac` 命令、多源码编译与类型声明查找](https://docs.oracle.com/en/java/javase/21/docs/specs/man/javac.html)
-- [Oracle JDK 21：`java` 命令与 classpath](https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html)
-- [Oracle Java SE 21：`ClassLoader` API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ClassLoader.html)
-- [Java 语言规范 21：二进制名称](https://docs.oracle.com/javase/specs/jls/se21/html/jls-13.html#jls-13.1)
-- [Java 虚拟机规范 21：class 文件格式](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)
-- [Java 虚拟机规范 21：使用用户定义的类加载器创建类](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-5.html#jvms-5.3.2)
-- [Oracle JDK 21：jar 命令](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jar.html)
-- [Oracle JDK 21：JAR 文件规范](https://docs.oracle.com/en/java/javase/21/docs/specs/jar/jar.html)
-- [Maven Source Plugin：生成配套的源码 JAR](https://maven.apache.org/plugins/maven-source-plugin/usage.html)
-- [Maven：标准目录布局](https://maven.apache.org/guides/introduction/introduction-to-the-standard-directory-layout.html)
-- [Maven：依赖机制](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html)
-- [Maven：构建生命周期](https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html)
-- [IntelliJ IDEA：从项目依赖组织编译与运行 classpath](https://www.jetbrains.com/help/idea/working-with-module-dependencies.html)
-- [Maven JAR Plugin：普通 JAR 的输入目录](https://maven.apache.org/plugins/maven-jar-plugin/jar-mojo.html)
-- [Maven Archiver：清单中的入口与依赖路径](https://maven.apache.org/shared/maven-archiver/examples/classpath.html)
-- [Maven Dependency：自动收集依赖文件](https://maven.apache.org/plugins/maven-dependency-plugin/copy-dependencies-mojo.html)
-- [Maven Assembly：组装发行包](https://maven.apache.org/plugins/maven-assembly-plugin/)
-- [Maven Shade：将应用和依赖合并打包](https://maven.apache.org/plugins/maven-shade-plugin/)
-- [Spring Boot 3.5：嵌套 JAR 的结构](https://docs.spring.io/spring-boot/3.5/specification/executable-jar/nested-jars.html)
-- [Spring Boot 3.5：可执行 JAR 的启动](https://docs.spring.io/spring-boot/3.5/specification/executable-jar/launching.html)
-- [Spring Boot 3.5：可执行 JAR 的打包配置](https://docs.spring.io/spring-boot/3.5/maven-plugin/packaging.html)
 
 ## 实验代码
 

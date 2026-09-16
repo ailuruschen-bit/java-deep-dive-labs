@@ -757,7 +757,7 @@ release/
 
 この構成も手作業でそろえる必要はありません。**Maven には、実行に必要な依存を集め、マニフェストを生成し、配布用アーカイブにまとめる手段があります。** 設定しておけば、ビルドで配布物を生成できます。アプリケーションと依存のクラスやリソースを一つの JAR に統合し、起動クラスを設定する方法もあります。
 
-具体的な設定は文末の資料を参照できます。ここでは、どの形式でも、起動時に探す場所と配布物の実際の配置を対応させることが要点です。
+どの形式でも、起動時に探す場所と配布物の実際の配置を対応させることが要点です。
 
 ## Spring Boot を見直す：一つの JAR にアプリケーションと依存を収める
 
@@ -817,30 +817,6 @@ Start-Class → dev.deepdive.app.Main.main
 手動の `javac` と `java` から、Maven のビルド、Spring Boot の実行可能 JAR まで、追ってきたのは同じ流れです。**ソースを class ファイルに変換し、入口のクラスと、そこから使うクラスを見つけられるようにする。** ツールが依存、出力先、起動情報を整理しても、クラス名と実際のファイルを結ぶ関係は残っています。
 
 次は、使い慣れたプロジェクトを開いて、コンパイル出力、パッケージの中身、実際の起動コマンドを見てみてください。入口のクラスは何か。必要なクラスはどこにあるか。その場所をつないでいるのは、どの設定、あるいはどの起動コードか。ソースから実行までの道筋を、この記事の知識でたどれるはずです。
-
-## 参考資料
-
-- [Oracle JDK 21：javac、複数ソースのコンパイルと型宣言の探索](https://docs.oracle.com/en/java/javase/21/docs/specs/man/javac.html)
-- [Oracle JDK 21：java と classpath](https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html)
-- [Oracle Java SE 21：ClassLoader API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ClassLoader.html)
-- [Java 言語仕様 21：バイナリ名](https://docs.oracle.com/javase/specs/jls/se21/html/jls-13.html#jls-13.1)
-- [Java 仮想マシン仕様 21：class ファイル形式](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)
-- [Java 仮想マシン仕様 21：ユーザー定義クラスローダーによるクラスの作成](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-5.html#jvms-5.3.2)
-- [Oracle JDK 21：jar コマンド](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jar.html)
-- [Oracle JDK 21：JAR ファイル仕様](https://docs.oracle.com/en/java/javase/21/docs/specs/jar/jar.html)
-- [Maven Source Plugin：ソース JAR の生成](https://maven.apache.org/plugins/maven-source-plugin/usage.html)
-- [Maven：標準ディレクトリレイアウト](https://maven.apache.org/guides/introduction/introduction-to-the-standard-directory-layout.html)
-- [Maven：依存関係の仕組み](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html)
-- [Maven：ビルドライフサイクル](https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html)
-- [IntelliJ IDEA：プロジェクトの依存とコンパイル時・実行時の classpath](https://www.jetbrains.com/help/idea/working-with-module-dependencies.html)
-- [Maven JAR Plugin：JAR に格納するディレクトリ](https://maven.apache.org/plugins/maven-jar-plugin/jar-mojo.html)
-- [Maven Archiver：マニフェストの起動クラスと依存パス](https://maven.apache.org/shared/maven-archiver/examples/classpath.html)
-- [Maven Dependency：依存ファイルの収集](https://maven.apache.org/plugins/maven-dependency-plugin/copy-dependencies-mojo.html)
-- [Maven Assembly：配布用アーカイブの作成](https://maven.apache.org/plugins/maven-assembly-plugin/)
-- [Maven Shade：アプリケーションと依存の統合](https://maven.apache.org/plugins/maven-shade-plugin/)
-- [Spring Boot 3.5：ネストした JAR の構造](https://docs.spring.io/spring-boot/3.5/specification/executable-jar/nested-jars.html)
-- [Spring Boot 3.5：実行可能 JAR の起動](https://docs.spring.io/spring-boot/3.5/specification/executable-jar/launching.html)
-- [Spring Boot 3.5：実行可能 JAR のパッケージ化](https://docs.spring.io/spring-boot/3.5/maven-plugin/packaging.html)
 
 ## 実験コード
 

@@ -753,7 +753,7 @@ The manifest's `Class-Path` uses relative paths such as `lib/greeting-1.0.0.jar`
 
 This directory and manifest need not be assembled by hand. **Maven provides ways to collect runtime dependencies, generate the manifest, and assemble a distribution automatically.** With the build configured, it produces the agreed layout. Another option is to merge application and dependency classes and resources into one JAR and configure its entry point.
 
-The references cover configuration options; detailed setup can wait for a dedicated article. The principle here is enough: the locations used at startup must match the layout of the files we deliver.
+Whichever packaging approach we choose, the locations used at startup must match the layout of the files we deliver.
 
 ## Spring Boot revisited: one JAR for application and dependencies
 
@@ -813,30 +813,6 @@ Start-Class → main method of dev.deepdive.app.Main
 From manual `javac` and `java` commands to Maven builds and Spring Boot executable JARs, the essential task is the same: **compile source into class files, then make the entry class and the classes it uses available at runtime.** Tools organize dependencies, output directories, and startup information for us. The connection between class names and physical files remains.
 
 Open a project you know and inspect its compilation output, packaged artifact, and actual launch command. Which class is the entry point? Where are the classes it needs? Which configuration or startup code connects those locations? Use those questions to trace the project from source to execution.
-
-## References
-
-- [Oracle JDK 21: javac, grouped source compilation, and type lookup](https://docs.oracle.com/en/java/javase/21/docs/specs/man/javac.html)
-- [Oracle JDK 21: java and the classpath](https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html)
-- [Oracle Java SE 21: ClassLoader API](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ClassLoader.html)
-- [Java Language Specification 21: Binary Names](https://docs.oracle.com/javase/specs/jls/se21/html/jls-13.html#jls-13.1)
-- [Java Virtual Machine Specification 21: The class File Format](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)
-- [Java Virtual Machine Specification 21: Creating Classes with User-defined Class Loaders](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-5.html#jvms-5.3.2)
-- [Oracle JDK 21: jar](https://docs.oracle.com/en/java/javase/21/docs/specs/man/jar.html)
-- [Oracle JDK 21: JAR File Specification](https://docs.oracle.com/en/java/javase/21/docs/specs/jar/jar.html)
-- [Maven Source Plugin: creating a companion sources JAR](https://maven.apache.org/plugins/maven-source-plugin/usage.html)
-- [Maven: Standard Directory Layout](https://maven.apache.org/guides/introduction/introduction-to-the-standard-directory-layout.html)
-- [Maven: Dependency Mechanism](https://maven.apache.org/guides/introduction/introduction-to-dependency-mechanism.html)
-- [Maven: Build Lifecycle](https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html)
-- [IntelliJ IDEA: Project dependencies and compilation/runtime classpaths](https://www.jetbrains.com/help/idea/working-with-module-dependencies.html)
-- [Maven JAR Plugin: inputs to an ordinary JAR](https://maven.apache.org/plugins/maven-jar-plugin/jar-mojo.html)
-- [Maven Archiver: manifest entry point and dependency paths](https://maven.apache.org/shared/maven-archiver/examples/classpath.html)
-- [Maven Dependency: collecting dependency files](https://maven.apache.org/plugins/maven-dependency-plugin/copy-dependencies-mojo.html)
-- [Maven Assembly: assembling a distribution](https://maven.apache.org/plugins/maven-assembly-plugin/)
-- [Maven Shade: merging application and dependency contents](https://maven.apache.org/plugins/maven-shade-plugin/)
-- [Spring Boot 3.5: Nested JARs](https://docs.spring.io/spring-boot/3.5/specification/executable-jar/nested-jars.html)
-- [Spring Boot 3.5: Launching Executable JARs](https://docs.spring.io/spring-boot/3.5/specification/executable-jar/launching.html)
-- [Spring Boot 3.5: executable-JAR packaging configuration](https://docs.spring.io/spring-boot/3.5/maven-plugin/packaging.html)
 
 ## Example code
 
