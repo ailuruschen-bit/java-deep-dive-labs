@@ -1,38 +1,15 @@
 # Java Deep Dive Labs
 
-面向 Java 技术文章的写作与实验仓库。每个章节同时收纳正文和实验，但不预设文章结构、构建工具或技术栈。
+Java 技术文章与配套实验代码。每章的 `article` 保存正文和图片，`lab` 保存实验源码及必要数据。
 
-系列写作以[局部完备](writing-principles.md)为核心：每篇文章在明确范围内解决一个问题，模型能够解释文中的实验现象。
+## 01 · 拆解 Java 启动：编译、类加载与 classpath
 
-## 第一篇：拆解 Java 启动
+[中文](chapters/01-plain-java-project/article/zh-CN.md) · [日本語](chapters/01-plain-java-project/article/ja.md) · [English](chapters/01-plain-java-project/article/en.md) · [实验代码](chapters/01-plain-java-project/lab/)
 
-[中文](chapters/01-plain-java-project/article/zh-CN.md) · [日本語](chapters/01-plain-java-project/article/ja.md) · [English](chapters/01-plain-java-project/article/en.md)
+从源码编译、类名与文件查找，到 JAR、清单启动，再回看 Maven 与 Spring Boot 的文件组织和启动方式。
 
-从编译与 classpath，到 JAR、Maven 和 Spring Boot。配套 [实验](chapters/01-plain-java-project/lab/README.md) 与 [审校记录](chapters/01-plain-java-project/article/final-review.md) 一并保存在本章。
+## 02 · 拆解 Java 编译：编译器检查了什么（初稿）
 
-## 仓库结构
+[中文](chapters/02-java-compiler/article/zh-CN.md) · [实验代码](chapters/02-java-compiler/lab/)
 
-```text
-.
-├── outline.md                 # 文章与章节索引
-├── writing-principles.md      # 系列写作的内容取舍原则
-└── chapters/
-    └── NN-topic-name/
-        ├── article/           # 本章正文及相关素材
-        └── lab/               # 本章实验环境
-```
-
-## 新增章节
-
-需要开始新章节时，新建 `chapters/NN-topic-name/`，然后按当章的实际需要创建：
-
-- `article/`：从空白开始写正文，文件组织由内容决定。
-- `lab/`：从空白搭建实验，构建方式、JDK 和依赖由实验决定。
-
-完成初步结构后，再把章节链接加入 `outline.md`。
-
-## 最小约定
-
-- 每章拥有自己的 `article/` 和 `lab/`。
-- 实验环境归当前章节所有，不依赖其他章节才能运行。
-- 其余写作与工程规则不预先规定，在实际撰写中按需要逐步形成。
+用编译诊断解释语法、名称、类型、确定赋值与受检异常，再区分编译通过和运行成功。

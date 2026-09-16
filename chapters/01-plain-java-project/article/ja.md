@@ -1,14 +1,12 @@
 # Java の起動をひもとく：コンパイル、クラスロード、classpath
 
-[中文](zh-CN.md) · [日本語](ja.md) · [English](en.md)
-
 Java プロジェクトを、`Main.java` と JDK だけにしてみましょう。Eclipse や IntelliJ IDEA、Maven は使わず、Spring も持ち込みません。コンパイルと起動に使うのは `javac` と `java` だけです。
 
 この最小構成から、ソースコードが class ファイルになるまで、起動時に指定したクラス名がディスク上のファイルに結び付くまでをたどります。そのつながりを支えるのが、コンパイル時と実行時それぞれの **classpath** です。
 
 後半では class ファイルを JAR にまとめ、普段の Maven プロジェクトや Spring Boot の実行可能 JAR でも、同じ考え方がどう使われているかを確認します。
 
-コマンドと実行例は JDK 21、macOS の環境によるものです。本文のコマンドは macOS／Linux 向けに記述しています。[実験用コードと再現手順](../lab/README.md)も用意しています。手順書は中国語ですが、本文のコマンドと実際の操作画面だけでも流れを追えます。
+実験には JDK 21 を使い、コマンドは macOS／Linux 向けに記述しています。環境変数 `CLASSPATH` は設定していません。各実験のソースコードや依存クラスの仕様、ファイル配置、コマンドを実行したディレクトリ、実行結果を本文に示します。コードをダウンロードしたり、同時に操作したりしなくても、本文と画面から仕組みを追える構成です。
 
 ## JDK のツールから始める
 
@@ -87,7 +85,7 @@ step-1/
 
 実際の操作をまとめて見てみましょう。`tree --noreport` で、コンパイル前後のファイルを確認しています。
 
-![javac Main.java でソースの隣に class ファイルを生成し、javac -d out Main.java で out に出力する](assets/experiment-01-compilation.png)
+![javac Main.java でソースの隣に class ファイルを生成し、javac -d out Main.java で out に出力する](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-01-compilation.png)
 
 ## カレントディレクトリから Main を起動する
 
@@ -170,7 +168,7 @@ dev/deepdive/app/Main.class
 
 `step-1` での `java Main` から、`step-2/out` に移動してパッケージ付きの `Main` をコンパイル、起動するまでの操作です。
 
-![java Main の実行後、step-2/out に移動し、パッケージ付きソースをコンパイルして java dev.deepdive.app.Main で起動する](assets/experiment-02-class-name.png)
+![java Main の実行後、step-2/out に移動し、パッケージ付きソースをコンパイルして java dev.deepdive.app.Main で起動する](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-02-class-name.png)
 
 では、変換後の `dev/deepdive/app/Main.class` をもう一度見てください。これは相対パスに見えます。だとすれば、どのディレクトリを基準に探すのでしょうか。
 
@@ -263,7 +261,7 @@ java -cp out dev.deepdive.app.Main
 
 実際の操作でも、同じ起動コマンドで主クラスが見つからなくなり、`-cp out` を加えると解決しています。
 
-![step-2 に移ると主クラスが見つからなくなり、java -cp out dev.deepdive.app.Main を指定すると正常に起動する](assets/experiment-03-classpath-root.png)
+![step-2 に移ると主クラスが見つからなくなり、java -cp out dev.deepdive.app.Main を指定すると正常に起動する](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-03-classpath-root.png)
 
 ## 一つの classpath に複数のエントリを指定する
 
@@ -358,7 +356,7 @@ package dev.deepdive.punctuation does not exist
 
 ファイルはすでに存在するのに、コンパイラには探索の起点が伝わっていない状態です。
 
-![Greeting.class と Punctuation.class が存在していても、コンパイル用 classpath を指定しなければ外部パッケージが見つからない](assets/experiment-04-compile-classpath-missing.png)
+![Greeting.class と Punctuation.class が存在していても、コンパイル用 classpath を指定しなければ外部パッケージが見つからない](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-04-compile-classpath-missing.png)
 
 ### javac -cp に依存クラスの探索先を渡す
 
@@ -469,7 +467,7 @@ Hello, classpath!
 
 コンパイルから起動までの操作です。まず `javac -cp "lib001:lib002"` でコンパイルし、生成されたファイルを確認してから、`java -cp ".:lib001:lib002"` で起動しています。
 
-![コンパイル時と実行時にそれぞれ classpath を指定し、Main.class と MessageService.class を生成してから正常に起動する](assets/experiment-05-compile-and-run-classpath.png)
+![コンパイル時と実行時にそれぞれ classpath を指定し、Main.class と MessageService.class を生成してから正常に起動する](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-05-compile-and-run-classpath.png)
 
 ### 依存クラスの探索先を一つ外す
 
@@ -494,7 +492,7 @@ Caused by: java.lang.ClassNotFoundException: dev.deepdive.punctuation.Punctuatio
 
 ディレクトリツリーには `Punctuation.class` が見えていますが、実行時の classpath から `lib002` を外すと、`MessageService.messageFor` でエラーになります。
 
-![Punctuation.class は残っているが、lib002 を classpath から外すと NoClassDefFoundError になり、原因として ClassNotFoundException が表示される](assets/experiment-06-runtime-classpath-missing.png)
+![Punctuation.class は残っているが、lib002 を classpath から外すと NoClassDefFoundError になり、原因として ClassNotFoundException が表示される](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-06-runtime-classpath-missing.png)
 
 > デフォルトの classpath は、環境変数 `CLASSPATH` でも設定できます。コマンドの `-cp` が優先され、どちらも設定しなければ `.` 一つです。本文のデフォルト探索先の実験では、この環境変数は設定していません。それ以外の実験では `-cp` で明示しています。
 
@@ -510,7 +508,7 @@ Caused by: java.lang.ClassNotFoundException: dev.deepdive.punctuation.Punctuatio
 
 > ライブラリには `xxx-sources.jar` が用意されていることもあります。通常は、コンパイル済みの class ファイルを入れた `xxx.jar` とは別に、対応する `.java` をまとめたものです。IDE で元のソースを読むときや、ソースを見ながらデバッグするときに使います。JAR にはソースとバイトコードを同居させることもできますが、「ソース付き」が常にその形式を意味するわけではありません。本文の起動方法で実行に使われるのは class ファイルであり、ソース JAR はコンパイル済みのライブラリの代わりにはなりません。
 
-引き続き同じ四つのクラスを使いますが、前の実験を残すため、独立した `lab/jar-classpath/work` に移ります。アプリケーションの二つのソースは `src/dev/deepdive/app/`、外部の class ファイルは `lib001` と `lib002` に用意されています。
+JAR の実験では、同じ四つのクラスを独立した `work` ディレクトリに配置しています。初期状態では、アプリケーションの二つのソースは `src/dev/deepdive/app/`、コンパイル済みの依存クラスは `lib001` と `lib002` にあり、`lib` は作成する JAR の保存先となる空のディレクトリです。以降、特に記載がない限り、パッケージ化、コンパイル、起動は `work` をカレントディレクトリとして行います。
 
 ```text
 work/  ← 以降のコマンドを実行するディレクトリ
@@ -556,7 +554,7 @@ jar --create --file lib/greeting.jar -C lib001 .
 jar --create --file lib/punctuation.jar -C lib002 .
 ```
 
-![lib001 と lib002 をそれぞれ lib 内の JAR にまとめる。元の class ファイルもそのまま残る](assets/experiment-07-jar-packaging.png)
+![lib001 と lib002 をそれぞれ lib 内の JAR にまとめる。元の class ファイルもそのまま残る](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-07-jar-packaging.png)
 
 内容を確認するには、操作を `--list` に変え、対象を `--file` で指定します。既存の JAR を読むだけなので、入力ファイルの指定は不要です。
 
@@ -580,7 +578,7 @@ greeting.jar
 
 もう一つ、用意していなかった `META-INF/MANIFEST.MF` が増えています。これは今回 `jar` が自動生成したテキストファイルで、**マニフェストファイル**と呼びます。JAR 自体の情報を記録するためのもので、後ほどアプリケーションの起動クラスや依存ファイルの位置を書き込みます。
 
-![二つの依存 JAR の内容を表示する。クラスのパスは dev から始まり、META-INF/MANIFEST.MF が自動生成されている](assets/experiment-08-jar-contents.png)
+![二つの依存 JAR の内容を表示する。クラスのパスは dev から始まり、META-INF/MANIFEST.MF が自動生成されている](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-08-jar-contents.png)
 
 ### JAR を使うときも classpath の考え方は同じ
 
@@ -612,7 +610,7 @@ java -cp "app-classes:lib/greeting.jar:lib/punctuation.jar" dev.deepdive.app.Mai
 
 一つの classpath に、ディレクトリと JAR を混在させて構いません。
 
-![依存 JAR を使って app-classes にコンパイルし、ディレクトリと JAR を混在させた classpath で起動する](assets/experiment-09-jar-compile-and-run.png)
+![依存 JAR を使って app-classes にコンパイルし、ディレクトリと JAR を混在させた classpath で起動する](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-09-jar-compile-and-run.png)
 
 アプリケーションも JAR にするなら、先ほどと同じ構造のコマンドを使います。今回は `app-classes` の中身を、カレントディレクトリの `app.jar` に格納します。
 
@@ -628,7 +626,7 @@ java -cp "app.jar:lib/greeting.jar:lib/punctuation.jar" dev.deepdive.app.Main
 
 出力は変わらず `Hello, classpath!` です。三つのエントリがすべて JAR になり、`app.jar` が自分たちの二つのクラスを、残りの JAR が外部クラスを提供します。実行時に JAR 内の class ファイルを読めるので、手動で展開する必要はありません。
 
-![アプリケーションを app.jar にまとめて内容を確認し、三つの JAR を classpath に指定して起動する](assets/experiment-10-application-jar.png)
+![アプリケーションを app.jar にまとめて内容を確認し、三つの JAR を classpath に指定して起動する](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-10-application-jar.png)
 
 ### JAR に起動情報を持たせる
 
@@ -668,13 +666,13 @@ java -jar app.jar
 
 **`java -jar` では、コマンドの `-cp` 指定は使われません。** `java -cp "lib/greeting.jar:lib/punctuation.jar" -jar app.jar` と書いても、依存クラスの不足は補えません。この例では、マニフェストの `Class-Path` を使います。
 
-![マニフェストを作って JAR を再生成し、work で java -jar app.jar を実行する。親ディレクトリから java -jar work/app.jar を実行しても正常に起動する](assets/experiment-11-manifest-launch.png)
+![マニフェストを作って JAR を再生成し、work で java -jar app.jar を実行する。親ディレクトリから java -jar work/app.jar を実行しても正常に起動する](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-11-manifest-launch.png)
 
 ## Maven を見直す：依存ファイルの場所とディレクトリの規約
 
 いつもの Maven プロジェクトを思い浮かべてください。ルートの `pom.xml` に依存を宣言し、`src/main/java` にコードを書きます。`mvn compile` を実行すると、バイトコードは `target/classes` に生成されます。通常の JAR プロジェクトなら、`mvn package` で `target` に JAR もできます。
 
-ここまで自分たちで行ったコンパイル、起動、パッケージ化を踏まえると、**Maven がどうやって依存ファイルを見つけ、ソースをコンパイルし、JAR にまとめているか**、大まかに見当が付くのではないでしょうか。
+ここまで見てきたコンパイル、起動、パッケージ化を踏まえると、**Maven がどうやって依存ファイルを見つけ、ソースをコンパイルし、JAR にまとめているか**、大まかに見当が付くのではないでしょうか。
 
 二つに分けて考えられます。**外部の依存ファイルを管理することと、プロジェクト自身のソース、リソース、生成物を管理することです。** 先ほどはコマンドに直接書いた場所を、Maven では設定と規約で扱います。
 
@@ -843,3 +841,7 @@ Start-Class → dev.deepdive.app.Main.main
 - [Spring Boot 3.5：ネストした JAR の構造](https://docs.spring.io/spring-boot/3.5/specification/executable-jar/nested-jars.html)
 - [Spring Boot 3.5：実行可能 JAR の起動](https://docs.spring.io/spring-boot/3.5/specification/executable-jar/launching.html)
 - [Spring Boot 3.5：実行可能 JAR のパッケージ化](https://docs.spring.io/spring-boot/3.5/maven-plugin/packaging.html)
+
+## 実験コード
+
+[GitHub · Java Deep Dive Labs](https://github.com/ailuruschen-bit/java-deep-dive-labs/tree/main/chapters/01-plain-java-project/lab)

@@ -1,14 +1,12 @@
 # 拆解 Java 启动：编译、类加载与 classpath
 
-[中文](zh-CN.md) · [日本語](ja.md) · [English](en.md)
-
 我们先把 Java 项目缩到最小：一个 `Main.java`，一套 JDK。不用 Eclipse 或 IntelliJ IDEA，不用 Maven，也不引入 Spring，编译和启动直接使用 `javac` 与 `java`。
 
 沿着这条最短路径，我们逐步拆开程序的运行过程：写下的源码怎样变成 class 文件，传入的类名怎样对应到磁盘上的文件，以及编译和运行阶段各自的 classpath 怎样决定从哪里查找所需的类。
 
 然后，我们把这些 class 文件收进 JAR，再回到 Maven 和 Spring Boot 项目中，观察同一套查找关系怎样继续发挥作用。
 
-本文实验使用 JDK 21，终端命令采用 macOS/Linux 的写法。源码与复现步骤见本章的 [lab](../lab/README.md)，阅读时也可以直接对照实操截图。
+本文展示的实验使用 JDK 21，命令采用 macOS/Linux 的写法，未设置 `CLASSPATH` 环境变量。每个实验都会给出源码或依赖说明、文件布局、命令执行时的工作目录，以及执行结果；无需下载代码或同步操作，也可以沿着正文和截图理解整个过程。
 
 ## 从 JDK 提供的工具开始
 
@@ -45,7 +43,7 @@ step-1/
 └── Main.java
 ```
 
-进入 `step-1`，执行编译：
+第一次编译的工作目录是 `step-1`，执行的命令是：
 
 ```bash
 javac Main.java
@@ -87,7 +85,7 @@ step-1/
 
 下面是这轮编译实验的完整操作。我们用 `tree --noreport` 查看每次编译前后的目录变化：
 
-![编译实验完整演示：javac Main.java 在源码旁生成字节码，javac -d out Main.java 将编译结果输出到 out](assets/experiment-01-compilation.png)
+![编译实验完整演示：javac Main.java 在源码旁生成字节码，javac -d out Main.java 将编译结果输出到 out](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-01-compilation.png)
 
 ## 从当前目录启动 Main
 
@@ -134,7 +132,7 @@ step-2/
                 └── Main.java
 ```
 
-进入 `step-2/out`，在这个工作目录下编译：
+这次编译的工作目录是 `step-2/out`，命令如下：
 
 ```bash
 javac dev/deepdive/app/Main.java
@@ -170,7 +168,7 @@ dev/deepdive/app/Main.class
 
 从 `step-1` 中执行 `java Main`，到进入 `step-2/out` 编译并启动带包名的 `Main`，完整操作如下：
 
-![启动实验完整演示：先执行 java Main，再进入 step-2/out，编译带包名的源码并执行 java dev.deepdive.app.Main](assets/experiment-02-class-name.png)
+![启动实验完整演示：先执行 java Main，再进入 step-2/out，编译带包名的源码并执行 java dev.deepdive.app.Main](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-02-class-name.png)
 
 回到类名转换后的 `dev/deepdive/app/Main.class`，它看起来就是一个相对路径。但相对路径还缺一个信息：从哪个目录开始找？
 
@@ -261,7 +259,7 @@ java -cp out dev.deepdive.app.Main
 
 下面是这次切换工作目录后的完整操作：同一条启动命令先报告找不到主类，补上 `-cp out` 后恢复正常。
 
-![切换到 step-2 后找不到主类，使用 java -cp out dev.deepdive.app.Main 后成功输出 Hello, Java!](assets/experiment-03-classpath-root.png)
+![切换到 step-2 后找不到主类，使用 java -cp out dev.deepdive.app.Main 后成功输出 Hello, Java!](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-03-classpath-root.png)
 
 ## 一个 classpath 可以包含多个条目
 
@@ -269,7 +267,7 @@ java -cp out dev.deepdive.app.Main
 
 比如，我们拿到了别人编译好的 `Greeting.class` 和 `Punctuation.class`，想把它们与自己的代码分开存放，就可以分别放进 `lib001`、`lib002`。
 
-这次也把我们自己的代码拆成两个源文件：`Main.java` 负责启动，同包中的 `MessageService.java` 负责组合消息。我们进入下面的 `deployment` 目录，接下来的编译和运行都在这里进行：
+这次应用代码也拆成两个源文件：`Main.java` 负责启动，同包中的 `MessageService.java` 负责组合消息。实验初始文件布局如下，接下来的编译和运行都以 `deployment` 为工作目录：
 
 ```text
 deployment/  ← 当前工作目录
@@ -356,7 +354,7 @@ package dev.deepdive.punctuation does not exist
 
 下面是这次编译失败的完整操作。两个外部 class 文件已经在目录中，但编译器还没有得到它们的搜索起点：
 
-![未配置编译 classpath：目录中已有 Greeting.class 和 Punctuation.class，同时编译 Main.java 与 MessageService.java 时仍报告两个外部包不存在](assets/experiment-04-compile-classpath-missing.png)
+![未配置编译 classpath：目录中已有 Greeting.class 和 Punctuation.class，同时编译 Main.java 与 MessageService.java 时仍报告两个外部包不存在](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-04-compile-classpath-missing.png)
 
 ### 用 `javac -cp` 补上依赖的搜索起点
 
@@ -469,7 +467,7 @@ Hello, classpath!
 
 把编译和运行连起来，完整操作如下：先用 `javac -cp "lib001:lib002"` 编译两份源码，确认生成的 class 文件，再用 `java -cp ".:lib001:lib002"` 启动程序。
 
-![分别配置编译与运行 classpath：生成 Main.class 和 MessageService.class 后，启动程序并输出 Hello, classpath!](assets/experiment-05-compile-and-run-classpath.png)
+![分别配置编译与运行 classpath：生成 Main.class 和 MessageService.class 后，启动程序并输出 Hello, classpath!](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-05-compile-and-run-classpath.png)
 
 ### 遗漏一个运行依赖
 
@@ -492,7 +490,7 @@ Caused by: java.lang.ClassNotFoundException: dev.deepdive.punctuation.Punctuatio
 
 下面的实操中，目录树仍然能看到 `Punctuation.class`；去掉运行 classpath 中的 `lib002` 后，异常出现在 `MessageService.messageFor` 中：
 
-![遗漏运行 classpath 中的 lib002：Punctuation.class 仍在磁盘上，程序执行到 MessageService.messageFor 时报告 NoClassDefFoundError，并以 ClassNotFoundException 为原因](assets/experiment-06-runtime-classpath-missing.png)
+![遗漏运行 classpath 中的 lib002：Punctuation.class 仍在磁盘上，程序执行到 MessageService.messageFor 时报告 NoClassDefFoundError，并以 ClassNotFoundException 为原因](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-06-runtime-classpath-missing.png)
 
 > 除了 `-cp`，`CLASSPATH` 环境变量也可以设置默认的 classpath。命令中的 `-cp` 优先于这个环境变量；两者都没有设置时，默认只有当前工作目录 `.` 这一个条目。本文的默认路径实验没有设置该变量，其他实验则用 `-cp` 明确指定条目。
 
@@ -508,7 +506,7 @@ Caused by: java.lang.ClassNotFoundException: dev.deepdive.punctuation.Punctuatio
 
 > 下载依赖时，我们还可能看到配套的 `xxx-sources.jar`。它通常是单独提供的源码归档：`xxx.jar` 存放编译好的 class 文件，`xxx-sources.jar` 存放对应的 `.java` 源码，方便我们在 IDE 中阅读源码、对照源码调试。JAR 格式也允许把源码和字节码装在同一个包里，但“提供源码”不一定意味着二者混装。对于本文的启动方式，运行时使用的仍是 class 文件，源码包不能替代编译好的依赖 JAR。
 
-下面继续使用 `Main`、`MessageService`、`Greeting` 和 `Punctuation`，但换到独立的 `lab/jar-classpath/work` 实验目录，不改动前面的文件。准备好的两份应用源码在 `src/dev/deepdive/app/` 下，两个外部 class 文件仍分别位于 `lib001` 和 `lib002`：
+JAR 实验继续使用相同的 `Main`、`MessageService`、`Greeting` 和 `Punctuation`，但在一个独立的 `work` 目录中进行。初始状态如下：两份应用源码放在 `src/dev/deepdive/app/`，两个已编译的外部类分别放在 `lib001` 和 `lib002`，`lib` 是存放归档结果的空目录。未另行说明时，下文的打包、编译和启动命令均以 `work` 为工作目录：
 
 ```text
 work/  ← 接下来命令的工作目录
@@ -556,7 +554,7 @@ jar --create --file lib/greeting.jar -C lib001 .
 jar --create --file lib/punctuation.jar -C lib002 .
 ```
 
-![将 lib001 和 lib002 中的依赖分别打包到 lib 目录，原有 class 文件仍然保留](assets/experiment-07-jar-packaging.png)
+![将 lib001 和 lib002 中的依赖分别打包到 lib 目录，原有 class 文件仍然保留](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-07-jar-packaging.png)
 
 要查看刚才生成的包，把行为换成 `--list`，仍用 `--file` 指定目标。这次只读取 JAR，不需要再提供打包的输入：
 
@@ -580,7 +578,7 @@ greeting.jar
 
 另外，包里还多出了一个我们没有手动准备的 `META-INF/MANIFEST.MF`。这是 `jar` 在本次打包时自动生成的文本文件，称为 **清单文件（manifest）**，用来记录这份 JAR 的相关信息。除了文件本身，JAR 还可以携带这样的说明；稍后我们就会用它记录应用的启动入口和依赖位置。
 
-![查看两份依赖 JAR：包内的类路径从 dev 开始，同时包含自动生成的 META-INF/MANIFEST.MF](assets/experiment-08-jar-contents.png)
+![查看两份依赖 JAR：包内的类路径从 dev 开始，同时包含自动生成的 META-INF/MANIFEST.MF](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-08-jar-contents.png)
 
 ### 使用 JAR，仍然是同一套 classpath
 
@@ -612,7 +610,7 @@ java -cp "app-classes:lib/greeting.jar:lib/punctuation.jar" dev.deepdive.app.Mai
 
 一个 classpath 可以同时包含目录和 JAR 条目，不要求所有文件采用同一种存放方式。
 
-![使用两份依赖 JAR 编译应用到 app-classes，再用目录与 JAR 混合的 classpath 启动，输出 Hello, classpath!](assets/experiment-09-jar-compile-and-run.png)
+![使用两份依赖 JAR 编译应用到 app-classes，再用目录与 JAR 混合的 classpath 启动，输出 Hello, classpath!](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-09-jar-compile-and-run.png)
 
 如果也想把自己的代码打成 JAR，仍然使用刚才的打包结构。这次从 `app-classes` 取文件，写入当前工作目录下的 `app.jar`：
 
@@ -628,7 +626,7 @@ java -cp "app.jar:lib/greeting.jar:lib/punctuation.jar" dev.deepdive.app.Main
 
 预期输出仍然是 `Hello, classpath!`。三个条目现在都是 JAR：`app.jar` 提供我们自己的两个类，其余两个 JAR 提供外部依赖。运行时可以直接读取包内的 class 文件，不需要我们先手动解压。
 
-![将应用字节码打包成 app.jar，查看包内结构，再使用三个 JAR 条目启动应用](assets/experiment-10-application-jar.png)
+![将应用字节码打包成 app.jar，查看包内结构，再使用三个 JAR 条目启动应用](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-10-application-jar.png)
 
 ### 让 JAR 记录自己的启动信息
 
@@ -666,13 +664,13 @@ java -jar app.jar
 
 **`java -jar` 不会沿用命令行 `-cp` 的那套设置。** 所以不能指望写成 `java -cp "lib/greeting.jar:lib/punctuation.jar" -jar app.jar` 就补上依赖；本例使用的是应用清单里的 `Class-Path`。
 
-![创建并查看清单后重新打包，在 work 中执行 java -jar app.jar，再切换到父目录执行 java -jar work/app.jar，两次均成功输出 Hello, classpath!](assets/experiment-11-manifest-launch.png)
+![创建并查看清单后重新打包，在 work 中执行 java -jar app.jar，再切换到父目录执行 java -jar work/app.jar，两次均成功输出 Hello, classpath!](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-11-manifest-launch.png)
 
 ## 回看 Maven：依赖位置与目录约定
 
 还记得标准的 Maven 项目结构吗？我们在根目录的 `pom.xml` 中声明需要的依赖，把代码写在 `src/main/java` 下。执行 `mvn compile` 后，编译得到的字节码出现在 `target/classes` 中；对于普通 JAR 项目，执行 `mvn package`，还会在 `target` 下生成 JAR 包。
 
-结合前面亲手完成的编译、启动和打包，我们能不能大致推测出：**Maven 是怎样找到依赖、编译源码，再把结果打成 JAR 的？**
+结合前面展示的编译、启动和打包过程，我们能不能大致推测出：**Maven 是怎样找到依赖、编译源码，再把结果打成 JAR 的？**
 
 我们可以把 Maven 做的这些工作分成两部分：**一是管理外部依赖的位置，二是管理项目自身的源码、资源和编译产物。** 前面这些位置由我们写进命令；在 Maven 项目中，它们有了统一的配置和约定。
 
@@ -839,3 +837,7 @@ Start-Class → dev.deepdive.app.Main.main
 - [Spring Boot 3.5：嵌套 JAR 的结构](https://docs.spring.io/spring-boot/3.5/specification/executable-jar/nested-jars.html)
 - [Spring Boot 3.5：可执行 JAR 的启动](https://docs.spring.io/spring-boot/3.5/specification/executable-jar/launching.html)
 - [Spring Boot 3.5：可执行 JAR 的打包配置](https://docs.spring.io/spring-boot/3.5/maven-plugin/packaging.html)
+
+## 实验代码
+
+[GitHub · Java Deep Dive Labs](https://github.com/ailuruschen-bit/java-deep-dive-labs/tree/main/chapters/01-plain-java-project/lab)

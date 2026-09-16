@@ -1,14 +1,12 @@
 # How Java Starts: Compilation, Class Loading, and the Classpath
 
-[中文](zh-CN.md) · [日本語](ja.md) · [English](en.md)
-
 Strip a Java project down to one `Main.java` and a JDK. No Eclipse or IntelliJ IDEA, no Maven, no Spring: just `javac` to compile and `java` to run.
 
 That gives us a direct view of the connection between our code and the files on disk. How does source code become a class file? How does a class name identify that file? And how do the compilation and runtime classpaths determine where to look for the classes we need?
 
 Once that connection is clear, we can package the files into JARs and recognize the same arrangement in Maven and Spring Boot projects.
 
-The examples use JDK 21 and a macOS/Linux shell. The screenshots show actual runs of the [accompanying labs](../lab/README.md), whose setup instructions are in Chinese.
+The examples use JDK 21 and macOS/Linux command syntax, with the `CLASSPATH` environment variable unset. Each example includes its source or dependency description, file layout, working directory, commands, and results. The text and screenshots tell the full story; no download or hands-on setup is needed to follow it.
 
 ## Start with the JDK tools
 
@@ -45,7 +43,7 @@ step-1/
 └── Main.java
 ```
 
-From `step-1`, compile it:
+With `step-1` as the working directory, the compilation command is:
 
 ```bash
 javac Main.java
@@ -87,11 +85,11 @@ That is the boundary compilation establishes here: **the JVM does not execute Ja
 
 The screenshot shows both compilations. `tree --noreport` makes the changes to the directory visible:
 
-![Compiling Main.java beside its source, then using javac -d out to write a second class file under out](assets/experiment-01-compilation.png)
+![Compiling Main.java beside its source, then using javac -d out to write a second class file under out](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-01-compilation.png)
 
 ## Run Main from the current directory
 
-With the class file in place, stay in `step-1` and run:
+With the class file in place and `step-1` still the working directory, the launch command is:
 
 ```bash
 java Main
@@ -111,7 +109,7 @@ Why a class name instead of a file path? Keep that distinction in mind. It becom
 
 ## Add a package and run it again
 
-For the next example, use a separate `step-2` directory. Place `Main.java` in directories matching its package, as we would in a regular project. The only code change is the package declaration:
+The next example uses a separate `step-2` directory, with `Main.java` placed in directories matching its package, as in a regular project. The only code change is the package declaration:
 
 ```java
 package dev.deepdive.app;
@@ -134,7 +132,7 @@ step-2/
                 └── Main.java
 ```
 
-From `step-2/out`, compile it:
+This compilation runs with `step-2/out` as the working directory:
 
 ```bash
 javac dev/deepdive/app/Main.java
@@ -170,7 +168,7 @@ dev/deepdive/app/Main.class
 
 Here is the complete sequence, from running `java Main` in `step-1` to compiling and running the packaged class in `step-2/out`:
 
-![Running java Main, then compiling and running dev.deepdive.app.Main from step-2/out](assets/experiment-02-class-name.png)
+![Running java Main, then compiling and running dev.deepdive.app.Main from step-2/out](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-02-class-name.png)
 
 The resulting `dev/deepdive/app/Main.class` looks like a relative path. A relative path still needs one more piece of information: where do we start looking?
 
@@ -259,7 +257,7 @@ The program runs again. `-cp out` sets this launch's classpath to a single entry
 
 The screenshot captures the failure after changing directories and the successful launch after adding `-cp out`:
 
-![The main class cannot be found from step-2 until java -cp out supplies the correct search location](assets/experiment-03-classpath-root.png)
+![The main class cannot be found from step-2 until java -cp out supplies the correct search location](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-03-classpath-root.png)
 
 ## One classpath, multiple entries
 
@@ -335,7 +333,7 @@ Consider `Greeting.forName(name)`. The compiler must first find the declaration 
 
 For our two application classes, the declarations are available in the source files we pass to `javac`. We have no source for the external classes, so the compiler needs the type information in `Greeting.class` and `Punctuation.class`. **Reading those declarations does not execute `Greeting.forName` or `Punctuation.mark`.**
 
-From `deployment`, pass both source files to `javac`, initially without explicitly configuring the compilation classpath:
+The first compilation runs from `deployment`, passing both source files to `javac` without explicitly configuring the compilation classpath:
 
 ```bash
 javac \
@@ -354,7 +352,7 @@ We supplied `Main.java` and `MessageService.java` explicitly. What is missing is
 
 Both files are present on disk, but the compiler has not been told where to begin looking for them:
 
-![Compilation fails with missing-package errors even though Greeting.class and Punctuation.class are present under lib001 and lib002](assets/experiment-04-compile-classpath-missing.png)
+![Compilation fails with missing-package errors even though Greeting.class and Punctuation.class are present under lib001 and lib002](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-04-compile-classpath-missing.png)
 
 ### Supply those locations with javac -cp
 
@@ -467,7 +465,7 @@ Hello, classpath!
 
 Here is the full sequence: compile the two sources with `javac -cp "lib001:lib002"`, inspect the generated class files, then launch with `java -cp ".:lib001:lib002"`:
 
-![Compiling with the dependency classpath, then launching with a runtime classpath that also includes the application classes](assets/experiment-05-compile-and-run-classpath.png)
+![Compiling with the dependency classpath, then launching with a runtime classpath that also includes the application classes](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-05-compile-and-run-classpath.png)
 
 ### Leave out a runtime dependency
 
@@ -490,7 +488,7 @@ We did not delete `Punctuation.class`. The file is still on disk; its search loc
 
 The directory listing still shows `Punctuation.class`, while the failure points to `MessageService.messageFor`:
 
-![Punctuation.class remains on disk, but omitting lib002 causes NoClassDefFoundError with ClassNotFoundException as its cause](assets/experiment-06-runtime-classpath-missing.png)
+![Punctuation.class remains on disk, but omitting lib002 causes NoClassDefFoundError with ClassNotFoundException as its cause](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-06-runtime-classpath-missing.png)
 
 > The `CLASSPATH` environment variable can also supply a default classpath. An explicit `-cp` takes precedence over it. When neither is set, the default is the single entry `.`. The default-path examples here run without that environment variable; the other examples specify their entries with `-cp`.
 
@@ -506,7 +504,7 @@ First, consider the contents. A **JAR (Java Archive)** is a ZIP-based archive th
 
 > A dependency may also provide a companion `xxx-sources.jar`. Usually, `xxx.jar` contains compiled class files and `xxx-sources.jar` contains the corresponding `.java` files for source browsing and debugging in an IDE. A JAR can contain both, but providing source does not necessarily mean bundling it with the bytecode. For the launch mechanisms in this article, the runtime still needs class files; a sources JAR is not a replacement for the compiled dependency.
 
-Keep the same four classes, but switch to the separate `lab/jar-classpath/work` lab directory so that we leave the earlier files untouched. The two application sources are under `src/dev/deepdive/app/`; the compiled dependencies are again under `lib001` and `lib002`:
+The JAR example uses the same four classes in a separate directory named `work`. Initially, the two application sources are under `src/dev/deepdive/app/`, the compiled dependencies are under `lib001` and `lib002`, and `lib` is an empty directory for the resulting archives. Unless noted otherwise, the packaging, compilation, and launch commands below run with `work` as their working directory:
 
 ```text
 work/  ← working directory for the following commands
@@ -554,7 +552,7 @@ The second dependency uses the same structure, with different input and output l
 jar --create --file lib/punctuation.jar -C lib002 .
 ```
 
-![Packaging the contents of lib001 and lib002 into dependency JARs while leaving the original class files in place](assets/experiment-07-jar-packaging.png)
+![Packaging the contents of lib001 and lib002 into dependency JARs while leaving the original class files in place](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-07-jar-packaging.png)
 
 To inspect a JAR, change the action to `--list` and identify it with `--file`. Listing does not need packaging input:
 
@@ -578,7 +576,7 @@ Notice two things. `Greeting.class` retains the path `dev/deepdive/greeting/Gree
 
 There is also a file we did not supply: `META-INF/MANIFEST.MF`. `jar` generated this text file during packaging. It is called the **manifest**, and it records information about the JAR. We will use it shortly to record the application's entry point and dependency locations.
 
-![Listing both dependency JARs: class paths begin at dev, and each archive includes an automatically generated manifest](assets/experiment-08-jar-contents.png)
+![Listing both dependency JARs: class paths begin at dev, and each archive includes an automatically generated manifest](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-08-jar-contents.png)
 
 ### Using a JAR is still a classpath operation
 
@@ -610,7 +608,7 @@ java -cp "app-classes:lib/greeting.jar:lib/punctuation.jar" dev.deepdive.app.Mai
 
 A single classpath can mix directory and JAR entries. It does not require all classes to use the same storage format.
 
-![Compiling against dependency JARs into app-classes, then running with a classpath containing both a directory and JARs](assets/experiment-09-jar-compile-and-run.png)
+![Compiling against dependency JARs into app-classes, then running with a classpath containing both a directory and JARs](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-09-jar-compile-and-run.png)
 
 To package our application too, use the same command structure. This time the input is `app-classes`, and the output is `app.jar` in the working directory:
 
@@ -626,7 +624,7 @@ java -cp "app.jar:lib/greeting.jar:lib/punctuation.jar" dev.deepdive.app.Main
 
 The output is still `Hello, classpath!`. All three entries are now JARs: `app.jar` supplies our two classes, and the other JARs supply the dependencies. The runtime reads the class files directly from the archives; we do not need to unpack them first.
 
-![Packaging the application as app.jar, inspecting it, and launching with three JAR entries on the classpath](assets/experiment-10-application-jar.png)
+![Packaging the application as app.jar, inspecting it, and launching with three JAR entries on the classpath](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-10-application-jar.png)
 
 ### Let the JAR describe how to start it
 
@@ -664,7 +662,7 @@ We can therefore deliver `app.jar` and the whole `lib` directory together. As lo
 
 **With `java -jar`, the command-line `-cp` setting is ignored.** Adding `-cp "lib/greeting.jar:lib/punctuation.jar"` before `-jar app.jar` would not supply missing dependencies. This example uses the manifest's `Class-Path` instead.
 
-![Creating the manifest, repackaging, and successfully launching first from work and then from its parent with java -jar work/app.jar](assets/experiment-11-manifest-launch.png)
+![Creating the manifest, repackaging, and successfully launching first from work and then from its parent with java -jar work/app.jar](https://raw.githubusercontent.com/ailuruschen-bit/java-deep-dive-labs/main/chapters/01-plain-java-project/article/assets/experiment-11-manifest-launch.png)
 
 ## Maven revisited: dependency paths and directory conventions
 
@@ -839,3 +837,7 @@ Open a project you know and inspect its compilation output, packaged artifact, a
 - [Spring Boot 3.5: Nested JARs](https://docs.spring.io/spring-boot/3.5/specification/executable-jar/nested-jars.html)
 - [Spring Boot 3.5: Launching Executable JARs](https://docs.spring.io/spring-boot/3.5/specification/executable-jar/launching.html)
 - [Spring Boot 3.5: executable-JAR packaging configuration](https://docs.spring.io/spring-boot/3.5/maven-plugin/packaging.html)
+
+## Example code
+
+[GitHub · Java Deep Dive Labs](https://github.com/ailuruschen-bit/java-deep-dive-labs/tree/main/chapters/01-plain-java-project/lab)
