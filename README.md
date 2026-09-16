@@ -10,6 +10,6 @@ Java 技术文章与配套实验代码。每章的 `article` 保存正文和图�
 
 ## 02 · 拆解 Java 编译：编译器检查了什么（初稿）
 
-[中文](chapters/02-java-compiler/article/zh-CN.md) · [实验代码](chapters/02-java-compiler/lab/)
+[中文](chapters/02-java-compiler/article/zh-CN.md) · [日本語](chapters/02-java-compiler/article/ja.md) · [English](chapters/02-java-compiler/article/en.md) · [实验代码](chapters/02-java-compiler/lab/)
 
 用编译诊断解释语法、名称、类型、确定赋值与受检异常，再区分编译通过和运行成功。
